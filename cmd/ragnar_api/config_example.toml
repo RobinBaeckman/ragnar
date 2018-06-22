@@ -1,0 +1,10 @@
+[app]
+host = "localhost"
+port = "3000"
+log_prefix = "something-api: "
+
+[mysql]
+host = "127.0.0.1"
+user = "root"
+password = "secret"
+db = "db"
