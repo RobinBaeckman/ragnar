@@ -6,6 +6,7 @@ import (
 
 	"github.com/RobinBaeckman/ragnar"
 	"github.com/RobinBaeckman/ragnar/errors"
+	"github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
@@ -50,6 +51,24 @@ func Login(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(j)
+
+		return nil
+	}
+}
+
+func Logout(re *redis.Client) func(http.ResponseWriter, *http.Request) error {
+	return func(w http.ResponseWriter, r *http.Request) (err error) {
+		c, err := r.Cookie(viper.GetString("session.cookie_name"))
+		if err != nil {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		v := c.Value
+
+		// Check if user is authenticated
+		re.Del(v)
+
+		w.WriteHeader(http.StatusOK)
 
 		return nil
 	}

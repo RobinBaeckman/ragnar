@@ -33,6 +33,7 @@ func main() {
 	r.Handle("/v1/users", Adapt(
 		errors.Check(controller.UserStore(c)),
 		middleware.Log(l),
+		middleware.Auth(re),
 	)).Methods("POST")
 	r.Handle("/v1/users/{id}", Adapt(
 		errors.Check(controller.UserShow(c)),
@@ -42,11 +43,17 @@ func main() {
 	r.Handle("/v1/users", Adapt(
 		errors.Check(controller.UserIndex(s)),
 		middleware.Log(l),
+		middleware.Auth(re),
 	)).Methods("GET")
 	r.Handle("/v1/login", Adapt(
 		errors.Check(controller.Login(c)),
 		middleware.Log(l),
 	)).Methods("POST")
+	r.Handle("/v1/logout", Adapt(
+		errors.Check(controller.Logout(re)),
+		middleware.Log(l),
+		middleware.Auth(re),
+	)).Methods("GET")
 
 	http.Handle("/", r)
 
