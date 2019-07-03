@@ -25,7 +25,12 @@ func decode(r *http.Request) (ragnar.In, error) {
 
 func mapUserStore(in *ragnar.In) (ragnar.User, error) {
 	u := ragnar.User{}
-	uid := uuid.NewV4().String()
+	buid, err := uuid.NewV4()
+	if err != nil {
+		return u, err
+	}
+	uid := buid.String()
+
 	pHash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return u, err

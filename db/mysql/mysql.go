@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/RobinBaeckman/ragnar"
-	"github.com/spf13/viper"
 )
 
 func NewDB() *sql.DB {
-	db, err := sql.Open("mysql", viper.GetString("mysql.user")+":"+viper.GetString("mysql.password")+"@tcp("+viper.GetString("mysql.host")+")/"+viper.GetString("mysql.db"))
+	db, err := sql.Open("mysql", os.Getenv("MYSQL_USER")+":"+os.Getenv("MYSQL_PASS")+"@tcp("+os.Getenv("MYSQL_HOST")+")/"+os.Getenv("MYSQL_DB"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,7 +22,7 @@ type UserService struct {
 	*sql.DB
 }
 
-func (s *UserService) Get(u *ragnar.User) error {
+func (s *UserService) Read(u *ragnar.User) error {
 	err := s.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE id=?", u.ID).Scan(&u.Email, &u.Password, &u.FirstName, &u.LastName, &u.Role)
 	switch {
 	case err == sql.ErrNoRows:
@@ -36,7 +36,7 @@ func (s *UserService) Get(u *ragnar.User) error {
 	return nil
 }
 
-func (s *UserService) GetByEmail(e string) (*ragnar.User, error) {
+func (s *UserService) ReadByEmail(e string) (*ragnar.User, error) {
 	u := &ragnar.User{}
 	err := s.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE email=?", e).Scan(&u.Email, &u.Password, &u.FirstName, &u.LastName, &u.Role)
 	switch {
@@ -51,19 +51,22 @@ func (s *UserService) GetByEmail(e string) (*ragnar.User, error) {
 	return u, nil
 }
 
-func (s *UserService) Store(u *ragnar.User) error {
+func (s *UserService) Create(u *ragnar.User) error {
 	stmtIns, err := s.Prepare("INSERT INTO users(id, email, password, first_name, last_name, role) VALUES(?,?,?,?,?,?)")
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 
-	stmtIns.Exec(u.ID, u.Email, u.Password, u.FirstName, u.LastName, "user")
+	_, err = stmtIns.Exec(u.ID, u.Email, u.Password, u.FirstName, u.LastName, "user")
+	if err != nil {
+		return err
+	}
 	defer stmtIns.Close()
 
 	return nil
 }
 
-func (s *UserService) GetAll(us *[]ragnar.User) error {
+func (s *UserService) ReadAll(us *[]ragnar.User) error {
 	rows, err := s.Query("SELECT * FROM users")
 	if err != nil {
 		panic(err.Error()) // proper error handling instead of panic in your app

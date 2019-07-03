@@ -19,7 +19,7 @@ type (
 	}
 )
 
-func UserStore(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
+func CreateUser(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		in, err := decode(r)
 		if err != nil {
@@ -38,7 +38,7 @@ func UserStore(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) err
 			return err
 		}
 
-		err = c.Store(&u)
+		err = c.Create(&u)
 		if err != nil {
 			return err
 		}
@@ -58,7 +58,7 @@ func UserStore(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) err
 	}
 }
 
-func UserShow(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
+func ReadUser(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		u, err := mapUserShow(r)
 		if err != nil {
@@ -69,7 +69,7 @@ func UserShow(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) erro
 			return &errors.ErrHTTP{nil, "Missing parameters", 404}
 		}
 
-		err = c.Get(&u)
+		err = c.Read(&u)
 		if err != nil {
 			return err
 		}
@@ -87,10 +87,10 @@ func UserShow(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) erro
 	}
 }
 
-func UserIndex(s ragnar.UserService) func(http.ResponseWriter, *http.Request) error {
+func ReadAllUsers(s ragnar.UserService) func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		us := &[]ragnar.User{}
-		err = s.GetAll(us)
+		err = s.ReadAll(us)
 		if err != nil {
 			return err
 		}

@@ -20,7 +20,7 @@ func NewUserCache(s UserService, r *redis.Client) *UserCache {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (c *UserCache) Get(u *User) error {
+func (c *UserCache) Read(u *User) error {
 	// Check the local cache first.
 
 	if uc := c.cache[u.ID]; uc != nil {
@@ -29,7 +29,7 @@ func (c *UserCache) Get(u *User) error {
 	}
 
 	// Otherwise fetch from the underlying service.
-	err := c.service.Get(u)
+	err := c.service.Read(u)
 	if err != nil {
 		return err
 	} else if u != nil {
@@ -41,14 +41,14 @@ func (c *UserCache) Get(u *User) error {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (c *UserCache) GetByEmail(e string) (*User, error) {
+func (c *UserCache) ReadByEmail(e string) (*User, error) {
 	// Check the local cache first.
 	if uc := c.cache[e]; uc != nil {
 		return uc, nil
 	}
 
 	// Otherwise fetch from the underlying service.
-	u, err := c.service.GetByEmail(e)
+	u, err := c.service.ReadByEmail(e)
 	if err != nil {
 		return u, err
 	} else if u != nil {
@@ -60,8 +60,8 @@ func (c *UserCache) GetByEmail(e string) (*User, error) {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (c *UserCache) Store(u *User) error {
-	err := c.service.Store(u)
+func (c *UserCache) Create(u *User) error {
+	err := c.service.Create(u)
 	if err != nil {
 		return err
 	} else if u != nil {

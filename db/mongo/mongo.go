@@ -1,8 +1,8 @@
 package mongo
 
 import (
-	"github.com/RobinBaeckman/atla/errors"
 	"github.com/RobinBaeckman/ragnar"
+	"github.com/RobinBaeckman/ragnar/errors"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )

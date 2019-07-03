@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,13 +13,11 @@ import (
 	"github.com/go-redis/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"github.com/spf13/viper"
 )
 
 func main() {
-	parseConfig()
+	l := log.New(os.Stdout, os.Getenv("LOG_PREFIX"), 3)
 	re := newRedis()
-	l := log.New(os.Stdout, viper.GetString("app.log_prefix"), 3)
 	db := mysql.NewDB()
 	defer db.Close()
 
@@ -30,25 +27,28 @@ func main() {
 	c := ragnar.NewUserCache(s, re)
 
 	// User user
-	r.Handle("/v1/users", Adapt(
-		errors.Check(controller.UserStore(c)),
+	r.Handle("/v1/users/signup", Adapt(
+		errors.Check(controller.CreateUser(c)),
 		middleware.Log(l),
-		middleware.Auth(re),
 	)).Methods("POST")
+
 	r.Handle("/v1/users/{id}", Adapt(
-		errors.Check(controller.UserShow(c)),
+		errors.Check(controller.ReadUser(c)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
+
 	r.Handle("/v1/users", Adapt(
-		errors.Check(controller.UserIndex(s)),
+		errors.Check(controller.ReadAllUsers(s)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
+
 	r.Handle("/v1/login", Adapt(
 		errors.Check(controller.Login(c)),
 		middleware.Log(l),
 	)).Methods("POST")
+
 	r.Handle("/v1/logout", Adapt(
 		errors.Check(controller.Logout(re)),
 		middleware.Log(l),
@@ -57,8 +57,8 @@ func main() {
 
 	http.Handle("/", r)
 
-	l.Println("Started")
-	l.Fatal(http.ListenAndServe(viper.GetString("app.host")+":"+viper.GetString("app.port"), nil))
+	l.Printf("Running on: %s:%s", os.Getenv("HOST"), os.Getenv("PORT"))
+	l.Fatal(http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), nil))
 }
 
 func Adapt(h http.Handler, adapters ...middleware.Adapter) http.Handler {
@@ -68,18 +68,9 @@ func Adapt(h http.Handler, adapters ...middleware.Adapter) http.Handler {
 	return h
 }
 
-func parseConfig() {
-	viper.SetConfigName("config") // name of config file (without extension)
-	viper.AddConfigPath(".")      // optionally look for config in the working directory
-	err := viper.ReadInConfig()   // Find and read the config file
-	if err != nil {               // Handle errors reading the config file
-		fmt.Errorf("Fatal error config file: %s \n", err)
-	}
-}
-
 func newRedis() *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:     viper.GetString("redis.host") + ":" + viper.GetString("redis.port"),
+		Addr:     os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})

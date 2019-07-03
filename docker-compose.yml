@@ -1,0 +1,15 @@
+version: '2'
+services:
+ db:
+   image: mysql:5.7
+   volumes:
+      - ./configs:/docker-entrypoint-initdb.d
+   restart: always
+   container_name: ragnar_mysql
+   environment:
+      MYSQL_DATABASE: ragnar_db 
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_USER: ruser 
+      MYSQL_PASSWORD: secret
+   ports:
+     - 3306:3306

@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"os"
 	"runtime/debug"
-
-	"github.com/spf13/viper"
 )
 
 type Check func(http.ResponseWriter, *http.Request) error
@@ -21,7 +19,7 @@ type ErrHTTP struct {
 
 // error handler
 func (fn Check) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	logger := log.New(os.Stdout, viper.GetString("app.log_prefix"), 3)
+	logger := log.New(os.Stdout, os.Getenv("LOG_PREFIX"), 3)
 	if err := fn(w, r); err != nil {
 		switch v := err.(type) {
 		case *ErrHTTP:

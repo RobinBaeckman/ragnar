@@ -3,12 +3,12 @@ package controller
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/RobinBaeckman/ragnar"
 	"github.com/RobinBaeckman/ragnar/errors"
 	"github.com/go-redis/redis"
 	uuid "github.com/satori/go.uuid"
-	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,20 +22,25 @@ func Login(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 			in.Password == "" {
 			return &errors.ErrHTTP{nil, "Missing parameters", 404}
 		}
-		u, err := c.GetByEmail(in.Email)
+		u, err := c.ReadByEmail(in.Email)
 
 		if err := bcrypt.CompareHashAndPassword(u.Password, []byte(in.Password)); err != nil {
 			return &errors.ErrHTTP{err, "Wrong Password", 401}
 		}
 
-		uid := uuid.NewV4().String()
+		buid, err := uuid.NewV4()
+		if err != nil {
+			return err
+		}
+		uid := buid.String()
+
 		err = c.Redis.Set(uid, u.Role, 0).Err()
 		if err != nil {
 			panic(err)
 		}
 
 		c := http.Cookie{
-			Name:     viper.GetString("session.cookie_name"),
+			Name:     os.Getenv("COOKIE_NAME"),
 			Value:    uid,
 			HttpOnly: true,
 		}
@@ -58,7 +63,7 @@ func Login(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 
 func Logout(re *redis.Client) func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		c, err := r.Cookie(viper.GetString("session.cookie_name"))
+		c, err := r.Cookie(os.Getenv("COOKIE_NAME"))
 		if err != nil {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
