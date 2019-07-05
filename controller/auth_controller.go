@@ -14,17 +14,21 @@ import (
 
 func Login(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		in, err := decode(r)
+		u := &ragnar.User{}
+		err = mapReqJSONToUser(r, u)
 		if err != nil {
 			return err
 		}
-		if in.Email == "" ||
-			in.Password == "" {
+		if u.Email == "" ||
+			u.Password == "" {
 			return &errors.ErrHTTP{nil, "Missing parameters", 404}
 		}
-		u, err := c.ReadByEmail(in.Email)
+		err = c.ReadByEmail(u)
+		if err != nil {
+			return err
+		}
 
-		if err := bcrypt.CompareHashAndPassword(u.Password, []byte(in.Password)); err != nil {
+		if err := bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(u.Password)); err != nil {
 			return &errors.ErrHTTP{err, "Wrong Password", 401}
 		}
 
@@ -46,16 +50,13 @@ func Login(c *ragnar.UserCache) func(http.ResponseWriter, *http.Request) error {
 		}
 		http.SetCookie(w, &c)
 
-		vm := &UserViewModel{}
-		vm.Map(u)
-
-		j, err := json.Marshal(vm)
+		b, err := json.Marshal(u)
 		if err != nil {
 			return err
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(j)
+		w.Write(b)
 
 		return nil
 	}

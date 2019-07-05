@@ -26,24 +26,41 @@ func main() {
 	s := &mysql.UserService{db}
 	c := ragnar.NewUserCache(s, re)
 
-	// User user
-	r.Handle("/v1/users/signup", Adapt(
+	// Create
+	r.Handle("/v1/users", Adapt(
 		errors.Check(controller.CreateUser(c)),
 		middleware.Log(l),
 	)).Methods("POST")
 
+	// Read
 	r.Handle("/v1/users/{id}", Adapt(
 		errors.Check(controller.ReadUser(c)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
 
+	// ReadAll
 	r.Handle("/v1/users", Adapt(
 		errors.Check(controller.ReadAllUsers(s)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
 
+	// Update
+	r.Handle("/v1/users/{id}", Adapt(
+		errors.Check(controller.UpdateUser(c)),
+		middleware.Log(l),
+		middleware.Auth(re),
+	)).Methods("PUT")
+
+	// Delete
+	r.Handle("/v1/users/{id}", Adapt(
+		errors.Check(controller.DeleteUser(c)),
+		middleware.Log(l),
+		middleware.Auth(re),
+	)).Methods("DELETE")
+
+	// Auth
 	r.Handle("/v1/login", Adapt(
 		errors.Check(controller.Login(c)),
 		middleware.Log(l),
@@ -61,6 +78,7 @@ func main() {
 	l.Fatal(http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), nil))
 }
 
+// TODO: make it so the handlers and middleware are read in the correct order in Adapt
 func Adapt(h http.Handler, adapters ...middleware.Adapter) http.Handler {
 	for _, adapter := range adapters {
 		h = adapter(h)

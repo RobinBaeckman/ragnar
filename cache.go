@@ -1,6 +1,8 @@
 package ragnar
 
-import "github.com/go-redis/redis"
+import (
+	"github.com/go-redis/redis"
+)
 
 // UserCache wraps a UserService to provide an in-memory cache.
 type UserCache struct {
@@ -16,6 +18,19 @@ func NewUserCache(s UserService, r *redis.Client) *UserCache {
 		service: s,
 		Redis:   r,
 	}
+}
+
+// User returns a user for a given id.
+// Returns the cached instance if available.
+func (c *UserCache) Create(u *User) error {
+	err := c.service.Create(u)
+	if err != nil {
+		return err
+	} else if u != nil {
+		c.cache[u.ID] = u
+	}
+
+	return err
 }
 
 // User returns a user for a given id.
@@ -41,31 +56,44 @@ func (c *UserCache) Read(u *User) error {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (c *UserCache) ReadByEmail(e string) (*User, error) {
+func (c *UserCache) ReadByEmail(u *User) error {
 	// Check the local cache first.
-	if uc := c.cache[e]; uc != nil {
-		return uc, nil
+	if uc := c.cache[u.ID]; uc != nil {
+		u = uc
+		return nil
 	}
 
+	// TODO: make sure the caching is workign correctly
 	// Otherwise fetch from the underlying service.
-	u, err := c.service.ReadByEmail(e)
-	if err != nil {
-		return u, err
-	} else if u != nil {
-		c.cache[u.Email] = u
-	}
-
-	return u, err
-}
-
-// User returns a user for a given id.
-// Returns the cached instance if available.
-func (c *UserCache) Create(u *User) error {
-	err := c.service.Create(u)
+	err := c.service.ReadByEmail(u)
 	if err != nil {
 		return err
 	} else if u != nil {
 		c.cache[u.ID] = u
+	}
+
+	return err
+}
+
+// User returns a user for a given id.
+// Returns the cached instance if available.
+func (c *UserCache) Update(u *User) error {
+	err := c.service.Update(u)
+	if err != nil {
+		return err
+	} else if u != nil {
+		c.cache[u.ID] = u
+	}
+
+	return err
+}
+
+func (c *UserCache) Delete(u *User) error {
+	err := c.service.Delete(u)
+	if err != nil {
+		return err
+	} else if u != nil {
+		delete(c.cache, u.ID)
 	}
 
 	return err
