@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/RobinBaeckman/ragnar"
-	"github.com/RobinBaeckman/ragnar/controller"
 	"github.com/RobinBaeckman/ragnar/db/mysql"
 	"github.com/RobinBaeckman/ragnar/errors"
+	"github.com/RobinBaeckman/ragnar/handler"
 	"github.com/RobinBaeckman/ragnar/middleware"
 	"github.com/go-redis/redis"
 	_ "github.com/go-sql-driver/mysql"
@@ -28,46 +28,46 @@ func main() {
 
 	// Create
 	r.Handle("/v1/users", Adapt(
-		errors.Check(controller.CreateUser(c)),
+		errors.Check(handler.CreateUser(c)),
 		middleware.Log(l),
 	)).Methods("POST")
 
 	// Read
 	r.Handle("/v1/users/{id}", Adapt(
-		errors.Check(controller.ReadUser(c)),
+		errors.Check(handler.ReadUser(c)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
 
 	// ReadAll
 	r.Handle("/v1/users", Adapt(
-		errors.Check(controller.ReadAllUsers(s)),
+		errors.Check(handler.ReadAllUsers(s)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
 
 	// Update
 	r.Handle("/v1/users/{id}", Adapt(
-		errors.Check(controller.UpdateUser(c)),
+		errors.Check(handler.UpdateUser(c)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("PUT")
 
 	// Delete
 	r.Handle("/v1/users/{id}", Adapt(
-		errors.Check(controller.DeleteUser(c)),
+		errors.Check(handler.DeleteUser(c)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("DELETE")
 
 	// Auth
 	r.Handle("/v1/login", Adapt(
-		errors.Check(controller.Login(c)),
+		errors.Check(handler.Login(c)),
 		middleware.Log(l),
 	)).Methods("POST")
 
 	r.Handle("/v1/logout", Adapt(
-		errors.Check(controller.Logout(re)),
+		errors.Check(handler.Logout(re)),
 		middleware.Log(l),
 		middleware.Auth(re),
 	)).Methods("GET")
