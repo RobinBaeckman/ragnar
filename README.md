@@ -22,6 +22,7 @@ export HOST="localhost" &&\
 export PORT="3000" &&\
 export LOG_PREFIX="something-api: " &&\
 export MYSQL_HOST="127.0.0.1" &&\
+export MYSQL_PORT="3306" &&\
 export MYSQL_USER="ruser" &&\
 export MYSQL_PASS="secret" &&\
 export MYSQL_DB="ragnar_db" &&\
@@ -39,7 +40,7 @@ docker-compose up -d
 else if you're running a mysql server, just make sure you have the right privilege to add tables
 ```
 cd ~/go/src/ragnar &&\
-mysql -uruser -psecret -h127.0.0.1 < configs/dump.sql
+mysql -uroot -psecret -h127.0.0.1 < configs/dump.sql
 
 ```
 

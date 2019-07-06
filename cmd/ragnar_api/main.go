@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,9 +17,21 @@ import (
 )
 
 func main() {
-	l := log.New(os.Stdout, os.Getenv("LOG_PREFIX"), 3)
+	l := log.New(os.Stdout, "", 3)
+
+	if err := parseEnv(); err != nil {
+		l.Println(err)
+		return
+	}
+
+	l.SetPrefix(ragnar.Env["LOG_PREFIX"])
+
 	re := newRedis()
-	db := mysql.NewDB()
+	db, err := mysql.NewDB()
+	if err != nil {
+		l.Println(err)
+		return
+	}
 	defer db.Close()
 
 	r := mux.NewRouter()
@@ -74,8 +87,10 @@ func main() {
 
 	http.Handle("/", r)
 
-	l.Printf("Running on: %s:%s", os.Getenv("HOST"), os.Getenv("PORT"))
-	l.Fatal(http.ListenAndServe(os.Getenv("HOST")+":"+os.Getenv("PORT"), nil))
+	l.Printf("Running on: %s:%s", ragnar.Env["HOST"], ragnar.Env["PORT"])
+	l.Fatal(http.ListenAndServe(ragnar.Env["HOST"]+":"+ragnar.Env["PORT"], nil))
+
+	return
 }
 
 // TODO: make it so the handlers and middleware are read in the correct order in Adapt
@@ -88,8 +103,20 @@ func Adapt(h http.Handler, adapters ...middleware.Adapter) http.Handler {
 
 func newRedis() *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_HOST") + ":" + os.Getenv("REDIS_PORT"),
+		Addr:     ragnar.Env["REDIS_HOST"] + ":" + ragnar.Env["REDIS_PORT"],
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+}
+
+func parseEnv() error {
+	for key, _ := range ragnar.Env {
+		if v, ok := os.LookupEnv(key); ok {
+			ragnar.Env[key] = v
+		} else {
+			return fmt.Errorf("missing env variable: %s", key)
+		}
+	}
+
+	return nil
 }

@@ -4,20 +4,19 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/RobinBaeckman/ragnar"
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func NewDB() *sql.DB {
-	db, err := sql.Open("mysql", os.Getenv("MYSQL_USER")+":"+os.Getenv("MYSQL_PASS")+"@tcp("+os.Getenv("MYSQL_HOST")+")/"+os.Getenv("MYSQL_DB"))
+func NewDB() (*sql.DB, error) {
+	db, err := sql.Open("mysql", ragnar.Env["MYSQL_USER"]+":"+ragnar.Env["MYSQL_PASS"]+"@tcp("+ragnar.Env["MYSQL_HOST"]+")/"+ragnar.Env["MYSQL_DB"])
 	if err != nil {
-		log.Fatal(err)
+		return db, err
 	}
 
-	return db
+	return db, nil
 }
 
 type UserService struct {
