@@ -20,7 +20,7 @@ go mod vendor
 ```
 export HOST="localhost" &&\
 export PORT="3000" &&\
-export LOG_PREFIX="something-api: " &&\
+export LOG_PREFIX="#[ragnar-api]#: " &&\
 export MYSQL_HOST="127.0.0.1" &&\
 export MYSQL_PORT="3306" &&\
 export MYSQL_USER="ruser" &&\
