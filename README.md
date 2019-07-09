@@ -2,11 +2,11 @@
 
 Small api with small architecture.
 
-Installation:
+## Installation:
 1. Clone repo to src
-'''
+```
 git clone https://github.com/RobinBaeckman/ragnar.git ~/go/src/ragnar
-'''
+```
 
 2. Import dependencies 
 ```
@@ -16,7 +16,7 @@ go mod init .
 go mod vendor
 ```
 
-2. Export env variables
+3. Export env variables
 ```
 export HOST="localhost" &&\
 export PORT="3000" &&\
@@ -31,7 +31,7 @@ export REDIS_PORT="6379" &&\
 export COOKIE_NAME="cookie"
 ```
 
-3. if you're using docker setup docker mysql
+4. if you're using docker setup docker mysql
 ```
 cd ~/go/src/ragnar &&\
 docker-compose up -d
@@ -44,12 +44,12 @@ mysql -uroot -psecret -h127.0.0.1 < configs/dump.sql
 
 ```
 
-4. Run program
+5. Run program
 ```
 go run main.go
 ```
 
-Usage:
+## Usage:
 
 Create new user
 ```
