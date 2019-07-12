@@ -1,3 +1,4 @@
+// TODO: make sure all returned error values are correct and fix error stuff
 package mysql
 
 import (
@@ -26,12 +27,12 @@ func (s *DB) Create(u *ragnar.User) error {
 	if err != nil {
 		return &ragnar.Error{Code: ragnar.ECONFLICT, Message: "Username already exists", Op: ragnar.Trace(), Err: err}
 	}
+	defer stmtIns.Close()
 
 	_, err = stmtIns.Exec(u.ID, u.Email, u.PasswordHash, u.FirstName, u.LastName, u.Role)
 	if err != nil {
 		return &ragnar.Error{Code: ragnar.ECONFLICT, Message: "Username already exists", Op: ragnar.Trace(), Err: err}
 	}
-	defer stmtIns.Close()
 
 	return nil
 }
@@ -81,10 +82,9 @@ func (s *DB) ReadAll(us *[]ragnar.User) error {
 	return nil
 }
 
-// TODO: fix role system
-// TODO: duplication of password hash generation
 func (s *DB) Update(u *ragnar.User) error {
 	stmtIns, err := s.Prepare("UPDATE users set email=?, password=?, first_name=?, last_name=?, role=? where id=?")
+	defer stmtIns.Close()
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,6 @@ func (s *DB) Update(u *ragnar.User) error {
 	if err != nil {
 		return err
 	}
-	defer stmtIns.Close()
 
 	return nil
 }
@@ -103,12 +102,12 @@ func (s *DB) Delete(u *ragnar.User) error {
 	if err != nil {
 		return err
 	}
+	defer stmtIns.Close()
 
 	_, err = stmtIns.Exec(u.ID)
 	if err != nil {
 		return err
 	}
-	defer stmtIns.Close()
 
 	return nil
 }

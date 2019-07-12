@@ -7,7 +7,7 @@ import (
 	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
 )
 
-func mapReqJSONToUser(r *http.Request, u *ragnar.User) error {
+func decode(r *http.Request, u *ragnar.User) error {
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 

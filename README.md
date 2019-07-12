@@ -54,7 +54,7 @@ go run main.go
 Create new user
 ```
 // TODO: use something else than python for showing json because the status code is not shown
-curl -v -d @tests/endpoints/create_user.json -X POST http://localhost:3000/v1/users | python -m json.tool
+curl -v -d @scripts/curl_tests/create_user.json -X POST http://localhost:3000/v1/users | python -m json.tool
 ```
 
 Login
@@ -79,7 +79,7 @@ curl -v -i -L -b /tmp/cookie-jar.txt -X GET http://localhost:3000/v1/users
 Update user
 ```
 // TODO: use something else than python for showing json because the status code is not shown
-curl -v -i -L -b /tmp/cookie-jar.txt -d @tests/endpoints/update_user.json -X PUT http://localhost:3000/v1/users/{id}
+curl -v -i -L -b /tmp/cookie-jar.txt -d @scripts/curl_tests/update_user.json -X PUT http://localhost:3000/v1/users/{id}
 
 ```
 

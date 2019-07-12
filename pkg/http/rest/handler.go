@@ -2,12 +2,14 @@ package rest
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
+	"github.com/RobinBaeckman/ragnar/pkg/valid"
+	uuid "github.com/google/uuid"
 	"github.com/gorilla/mux"
-	uuid "github.com/satori/go.uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -16,27 +18,33 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		// use thing
 		u := &ragnar.User{}
-		err = mapReqJSONToUser(r, u)
+		err = decode(r, u)
 		if err != nil {
 			return err
 		}
 
-		// Validation
-		if u.Email == "" ||
-			u.Password == "" ||
-			u.LastName == "" ||
-			u.FirstName == "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Missing parameters", Op: ragnar.Trace(), Err: err}
+		var msg string
+		switch {
+		case !valid.IsEmail(u.Email):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
+		case !valid.IsPassword(u.Password):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
+		case !valid.IsFirstName(u.FirstName):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.FirstName)
+		case !valid.IsLastName(u.LastName):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.LastName)
 		}
-		buid, err := uuid.NewV4()
-		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+		if msg != "" {
+			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
 		}
-		u.ID = buid.String()
+
+		u.ID = uuid.New().String()
+
 		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
 		}
+
 		// TODO: build better Role implementation
 		u.Role = "user"
 
@@ -62,8 +70,8 @@ func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 		u := &ragnar.User{}
 		u.ID = mux.Vars(r)["id"]
 
-		if u.ID == "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Missing parameters", Op: ragnar.Trace(), Err: err}
+		if !valid.IsUUID(u.ID) {
+			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Invalid UUID.", Op: ragnar.Trace()}
 		}
 
 		err = s.userStorage.Read(u)
@@ -108,28 +116,35 @@ func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		u := &ragnar.User{}
-		err = mapReqJSONToUser(r, u)
+		err = decode(r, u)
 		if err != nil {
 			return err
 		}
 
 		u.ID = mux.Vars(r)["id"]
 
-		// Validation
-		// TODO: improve validation
-		// TODO: u.ID should be a valid uuid
-		if u.ID == "" ||
-			u.Email == "" ||
-			u.Password == "" ||
-			u.LastName == "" ||
-			u.FirstName == "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Missing parameters", Op: ragnar.Trace(), Err: err}
+		var msg string
+		switch {
+		case !valid.IsUUID(u.ID):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.ID)
+		case !valid.IsEmail(u.Email):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
+		case !valid.IsPassword(u.Password):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
+		case !valid.IsFirstName(u.FirstName):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.FirstName)
+		case !valid.IsLastName(u.LastName):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.LastName)
+		}
+		if msg != "" {
+			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
 		}
 
 		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
 		}
+
 		// TODO: build better Role implementation
 		u.Role = "user"
 
@@ -155,11 +170,8 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 		u := &ragnar.User{}
 		u.ID = mux.Vars(r)["id"]
 
-		// Validation
-		// TODO: improve validation
-		// TODO: u.ID should be a valid uuid
-		if u.ID == "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Missing parameters", Op: ragnar.Trace(), Err: err}
+		if !valid.IsUUID(u.ID) {
+			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Invalid UUID.", Op: ragnar.Trace()}
 		}
 
 		err = s.userStorage.Delete(u)
@@ -182,16 +194,22 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		u := &ragnar.User{}
-		err = mapReqJSONToUser(r, u)
-		if err != nil {
+		if err := decode(r, u); err != nil {
 			return err
 		}
-		if u.Email == "" ||
-			u.Password == "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Missing parameters", Op: ragnar.Trace(), Err: err}
+
+		var msg string
+		switch {
+		case !valid.IsEmail(u.Email):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
+		case !valid.IsPassword(u.Password):
+			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
 		}
-		err = s.userStorage.DB.ReadByEmail(u)
-		if err != nil {
+		if msg != "" {
+			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
+		}
+
+		if err = s.userStorage.DB.ReadByEmail(u); err != nil {
 			return err
 		}
 
@@ -199,13 +217,9 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 			return &ragnar.Error{Code: ragnar.EUNAUTHORIZED, Message: "Wrong username or password.", Op: ragnar.Trace(), Err: err}
 		}
 
-		buid, err := uuid.NewV4()
-		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
-		}
-		u.ID = buid.String()
+		uid := uuid.New().String()
 
-		err = s.userStorage.Redis.Set(u.ID, u.Email, 0).Err()
+		err = s.userStorage.Redis.Set(uid, u.Email, 0).Err()
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EUNAUTHORIZED, Op: ragnar.Trace(), Err: err}
 		}
