@@ -3,104 +3,267 @@ package rest_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"sort"
 	"testing"
+	"time"
 
-	"github.com/RobinBaeckman/atla"
-	"github.com/RobinBaeckman/atla/controller"
-	"github.com/RobinBaeckman/atla/domain"
-	"github.com/RobinBaeckman/atla/mock"
+	uuid "github.com/google/uuid"
 	"github.com/gorilla/mux"
+
+	"github.com/RobinBaeckman/ragnar/pkg/http/rest"
+	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
+	"github.com/RobinBaeckman/ragnar/pkg/valid"
 )
 
-func TestUserShow(t *testing.T) {
-	// Inject our mock into our handler.
-	var as mock.UserService
+var s *rest.Server
+var us *[]ragnar.User
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
-	// Mock our UserGet() call.
-	as.UserGetFn = func(a *domain.User) error {
-		if a.ID != "9463268a-0825-4ca3-b55b-75c0e2487ac1" {
-			t.Fatalf("unexpected id: %s", a.ID)
-		}
-		return nil
-	}
-
-	// Invoke the handler.
-	w := httptest.NewRecorder()
-	r, err := http.NewRequest("GET", "localhost:3000/v1/users", nil)
+func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UnixNano())
+	dbenv := os.Getenv("MYSQL_DB")
+	os.Setenv("MYSQL_DB", "ragnar_db_test")
+	err := rest.ParseEnv()
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	r = mux.SetURLVars(r, map[string]string{"id": "9463268a-0825-4ca3-b55b-75c0e2487ac1"})
 
-	i := &atla.UserInteractor{
-		UserService: atla.UserService(&as),
-	}
-	var c = controller.UserShow(i)
-	err = c(w, r)
+	s, err = rest.NewServer()
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
-	// Validate mock.
-	if !as.UserGetInvoked {
-		t.Fatal("expected UserGet() to be invoked")
+	s.Storage.DB.CleanupTables()
+
+	us, err = createRandomUsers(2)
+	if err != nil {
+		panic(err)
 	}
+
+	code := m.Run()
+
+	os.Setenv("MYSQL_DB", dbenv)
+	s.Storage.DB.CleanupTables()
+	s.Storage.DB.Close()
+
+	os.Exit(code)
 }
 
-func TestUserStore(t *testing.T) {
-	// Inject our mock into our handler.
-	var as mock.UserService
+func TestCreateUser(t *testing.T) {
+	reqB := &ragnar.User{}
+	generateUserData(reqB)
 
-	// Mock our UserGet() call.
-	as.UserPersistFn = func(a *domain.User) error {
-		if a.Email != "email@mail.com" ||
-			a.FirstName != "Tom" ||
-			a.LastName != "Hanks" {
-			t.Fatalf("unexpected email, firstName or lastName: %s", a.ID)
-		}
-		return nil
+	b, err := json.Marshal(reqB)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// Invoke the handler.
-	w := httptest.NewRecorder()
-	//pl := &struct {
-	//email     string
-	//password  string
-	//firstName string
-	//lastName  string
-	//}{
-	//email:     "email@mail.com",
-	//password:  "secret",
-	//firstName: "Tom",
-	//lastName:  "Hanks",
-	//}
-	pl := atla.InUserStore{
-		Email:     "email@mail.com",
-		Password:  "secret",
-		FirstName: "Tom",
-		LastName:  "Hanks",
-	}
-
-	b, err := json.Marshal(&pl)
-
+	// TODO: change from static to env hostname
 	r, err := http.NewRequest("POST", "localhost:3000/v1/users", bytes.NewBuffer(b))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	i := &atla.UserInteractor{
-		UserService: atla.UserService(&as),
-	}
-	var c = controller.UserStore(i)
-	err = c(w, r)
+	h := s.CheckError(s.CreateUser())
+
+	w := httptest.NewRecorder()
+	err = h(w, r)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Validate mock.
-	if !as.UserPersistInvoked {
-		t.Fatal("expected UserPersist() to be invoked")
+	if status := w.Code; status != http.StatusCreated {
+		t.Errorf("Wrong status code: got %v want %v", status, http.StatusCreated)
 	}
+
+	resB := &ragnar.User{}
+
+	d := json.NewDecoder(w.Body)
+	err = d.Decode(resB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !valid.UUID(resB.ID) ||
+		resB.Email != reqB.Email ||
+		resB.Password != reqB.Password ||
+		resB.FirstName != reqB.FirstName ||
+		resB.LastName != reqB.LastName {
+		t.Error("not valid responsedata")
+	}
+
+	*us = append(*us, *resB)
+}
+
+func TestReadUser(t *testing.T) {
+	r, err := http.NewRequest("GET", "localhost:3000/v1/users", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r = mux.SetURLVars(r, map[string]string{
+		"id": (*us)[0].ID,
+	})
+
+	h := s.CheckError(s.ReadUser())
+
+	w := httptest.NewRecorder()
+	err = h(w, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status := w.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	resB := &ragnar.User{}
+
+	d := json.NewDecoder(w.Body)
+	err = d.Decode(resB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resB.ID != (*us)[0].ID ||
+		resB.Email != (*us)[0].Email ||
+		// TODO: make sure all input is validated
+		//resB.Password != u.Password ||
+		resB.FirstName != (*us)[0].FirstName ||
+		resB.LastName != (*us)[0].LastName {
+		t.Error("not valid responsedata")
+	}
+}
+
+func TestReadAllUsers(t *testing.T) {
+	r, err := http.NewRequest("GET", "localhost:3000/v1/users", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := s.CheckError(s.ReadAllUsers())
+
+	w := httptest.NewRecorder()
+	err = h(w, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status := w.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	resBs := &[]ragnar.User{}
+
+	d := json.NewDecoder(w.Body)
+	err = d.Decode(resBs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.SliceStable(*resBs, func(i, j int) bool {
+		return (*resBs)[i].Email < (*resBs)[j].Email
+	})
+
+	sort.SliceStable(*us, func(i, j int) bool {
+		return (*us)[i].Email < (*us)[j].Email
+	})
+
+	for i, resB := range *resBs {
+		switch {
+		case resB.ID != (*us)[i].ID:
+			t.Errorf("Invalid parameters: %v or %v", resB.ID, (*us)[i].ID)
+		case resB.Email != (*us)[i].Email:
+			t.Errorf("Invalid parameters: %v or %v", resB.Email, (*us)[i].Email)
+		case resB.Password != (*us)[i].Password:
+			t.Errorf("Invalid parameters: %v or %v", resB.Password, (*us)[i].Password)
+		case resB.FirstName != (*us)[i].FirstName:
+			t.Errorf("Invalid parameters: %v or %v", resB.FirstName, (*us)[i].FirstName)
+		case resB.LastName != (*us)[i].LastName:
+			t.Errorf("Invalid parameters: %v or %v", resB.FirstName, (*us)[i].FirstName)
+		}
+	}
+}
+
+func TestUpdateUser(t *testing.T) {
+	reqB := &ragnar.User{}
+	generateUserData(reqB)
+
+	b, err := json.Marshal(reqB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := http.NewRequest("PUT", "localhost:3000/v1/users", bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	h := s.CheckError(s.UpdateUser())
+
+	w := httptest.NewRecorder()
+	err = h(w, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status := w.Code; status != http.StatusOK {
+		t.Errorf("Wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	resB := &ragnar.User{}
+
+	d := json.NewDecoder(w.Body)
+	err = d.Decode(resB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !valid.UUID(resB.ID) ||
+		resB.Email != reqB.Email ||
+		resB.Password != reqB.Password ||
+		resB.FirstName != reqB.FirstName ||
+		resB.LastName != reqB.LastName {
+		t.Error("not valid responsedata")
+	}
+
+	*us = append(*us, *resB)
+}
+
+func generateUserData(u *ragnar.User) {
+	u.ID = uuid.New().String()
+	u.Email = fmt.Sprintf("%s@mail.com", randSeq(12))
+	u.Password = "secret"
+	u.PasswordHash = []byte("$2a$10$flStfMMZw4TsuJh3OdJhYeDBCibDlTNNm.yVMya4RgMcc7bF0/2nq")
+	u.FirstName = "Rolf"
+	u.LastName = "Baeckman"
+	u.Role = "user"
+}
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+// i is the number of random users that is being created
+func createRandomUsers(i int) (*[]ragnar.User, error) {
+	us := []ragnar.User{}
+	for y := 0; y < i; y++ {
+		u := &ragnar.User{}
+		generateUserData(u)
+		err := s.Storage.DB.Create(u)
+		if err != nil {
+			return &us, err
+		}
+		us = append(us, *u)
+	}
+
+	return &us, nil
 }

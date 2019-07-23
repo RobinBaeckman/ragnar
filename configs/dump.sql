@@ -1,7 +1,20 @@
 UPDATE mysql.user SET Host='%' WHERE Host='localhost' AND User='ruser';
+GRANT ALL PRIVILEGES ON *.* TO 'ruser'@'%';
 FLUSH PRIVILEGES;
 CREATE DATABASE IF NOT EXISTS ragnar_db;
+CREATE DATABASE IF NOT EXISTS ragnar_db_test;
 USE ragnar_db;
+CREATE TABLE IF NOT EXISTS `users` (
+	`id` CHAR(36) UNIQUE NOT NULL,
+	`email` VARCHAR(64) UNIQUE NOT NULL,
+	`password` VARCHAR(64) NOT NULL,
+	`first_name` VARCHAR(64) NOT NULL,
+	`last_name` VARCHAR(64) NOT NULL,
+	`role` VARCHAR(64) NOT NULL,
+	`created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`)
+);
+USE ragnar_db_test;
 CREATE TABLE IF NOT EXISTS `users` (
 	`id` CHAR(36) UNIQUE NOT NULL,
 	`email` VARCHAR(64) UNIQUE NOT NULL,

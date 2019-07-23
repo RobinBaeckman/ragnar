@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
 	"github.com/RobinBaeckman/ragnar/pkg/valid"
@@ -25,13 +24,13 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 
 		var msg string
 		switch {
-		case !valid.IsEmail(u.Email):
+		case !valid.Email(u.Email):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
-		case !valid.IsPassword(u.Password):
+		case !valid.Password(u.Password):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
-		case !valid.IsFirstName(u.FirstName):
+		case !valid.FirstName(u.FirstName):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.FirstName)
-		case !valid.IsLastName(u.LastName):
+		case !valid.LastName(u.LastName):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.LastName)
 		}
 		if msg != "" {
@@ -48,7 +47,7 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 		// TODO: build better Role implementation
 		u.Role = "user"
 
-		err = s.userStorage.Create(u)
+		err = s.Storage.Create(u)
 		if err != nil {
 			return err
 		}
@@ -58,23 +57,27 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
 		}
 
+		url := fmt.Sprintf("%s://%s:%s/v1/users/%s", ragnar.Env["PROTO"], ragnar.Env["HOST"], ragnar.Env["PORT"], u.ID)
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Location", url)
+		w.WriteHeader(http.StatusCreated)
 		w.Write(b)
 
 		return nil
 	}
 }
 
+// TODO: make sure the password is returned too
 func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		u := &ragnar.User{}
 		u.ID = mux.Vars(r)["id"]
 
-		if !valid.IsUUID(u.ID) {
+		if !valid.UUID(u.ID) {
 			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Invalid UUID.", Op: ragnar.Trace()}
 		}
 
-		err = s.userStorage.Read(u)
+		err = s.Storage.Read(u)
 		if err != nil {
 			return err
 		}
@@ -91,11 +94,12 @@ func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 	}
 }
 
+// TODO: make sure the password is returned too
 func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		us := &[]ragnar.User{}
 		// TODO: add ReadAll to memcache
-		err = s.userStorage.DB.ReadAll(us)
+		err = s.Storage.DB.ReadAll(us)
 		if err != nil {
 			return err
 		}
@@ -125,15 +129,15 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 		var msg string
 		switch {
-		case !valid.IsUUID(u.ID):
+		case !valid.UUID(u.ID):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.ID)
-		case !valid.IsEmail(u.Email):
+		case !valid.Email(u.Email):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
-		case !valid.IsPassword(u.Password):
+		case !valid.Password(u.Password):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
-		case !valid.IsFirstName(u.FirstName):
+		case !valid.FirstName(u.FirstName):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.FirstName)
-		case !valid.IsLastName(u.LastName):
+		case !valid.LastName(u.LastName):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.LastName)
 		}
 		if msg != "" {
@@ -148,7 +152,7 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 		// TODO: build better Role implementation
 		u.Role = "user"
 
-		err = s.userStorage.Update(u)
+		err = s.Storage.Update(u)
 		if err != nil {
 			return err
 		}
@@ -170,11 +174,11 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 		u := &ragnar.User{}
 		u.ID = mux.Vars(r)["id"]
 
-		if !valid.IsUUID(u.ID) {
+		if !valid.UUID(u.ID) {
 			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Invalid UUID.", Op: ragnar.Trace()}
 		}
 
-		err = s.userStorage.Delete(u)
+		err = s.Storage.Delete(u)
 		if err != nil {
 			return err
 		}
@@ -200,16 +204,16 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 
 		var msg string
 		switch {
-		case !valid.IsEmail(u.Email):
+		case !valid.Email(u.Email):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
-		case !valid.IsPassword(u.Password):
+		case !valid.Password(u.Password):
 			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
 		}
 		if msg != "" {
 			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
 		}
 
-		if err = s.userStorage.DB.ReadByEmail(u); err != nil {
+		if err = s.Storage.DB.ReadByEmail(u); err != nil {
 			return err
 		}
 
@@ -219,14 +223,14 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 
 		uid := uuid.New().String()
 
-		err = s.userStorage.Redis.Set(uid, u.Email, 0).Err()
+		err = s.Storage.MemDB.Set(uid, u.Email, 0)
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EUNAUTHORIZED, Op: ragnar.Trace(), Err: err}
 		}
 
 		c := http.Cookie{
-			Name:     os.Getenv("COOKIE_NAME"),
-			Value:    u.ID,
+			Name:     ragnar.Env["COOKIE_NAME"],
+			Value:    uid,
 			HttpOnly: true,
 		}
 		http.SetCookie(w, &c)
@@ -245,13 +249,13 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) Logout() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		c, err := r.Cookie(os.Getenv("COOKIE_NAME"))
+		c, err := r.Cookie(ragnar.Env["COOKIE_NAME"])
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EFORBIDDEN, Message: "You are already logged out.", Op: ragnar.Trace(), Err: err}
 		}
 		v := c.Value
 
-		s.userStorage.Redis.Del(v)
+		s.Storage.MemDB.Del(v)
 
 		w.WriteHeader(http.StatusOK)
 

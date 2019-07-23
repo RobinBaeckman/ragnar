@@ -3,6 +3,7 @@ package ragnar
 import (
 	"fmt"
 	"runtime"
+	"time"
 )
 
 func Trace() string {
@@ -41,7 +42,9 @@ type Error struct {
 
 // Error returns the string representation of the error message.
 // TODO: create a formated error message
-func (e *Error) Error() string { return e.Message }
+func (e *Error) Error() string {
+	return fmt.Sprintf("Code: %s, Message: %s, Op: %s, Err: %s", e.Code, e.Message, e.Op, e.Err)
+}
 
 // Application error codes.
 const (
@@ -58,13 +61,21 @@ const (
 	EINTERNAL_MSG = "Oops something went wrong"
 )
 
-type UserDB interface {
+type DB interface {
 	Create(*User) error
 	Read(*User) error
 	ReadByEmail(*User) error
 	ReadAll(*[]User) error
 	Update(*User) error
 	Delete(*User) error
+	CleanupTables() error
+	Close()
+}
+
+type MemDB interface {
+	Set(string, interface{}, time.Duration) error
+	Del(string) error
+	Get(string) (string, error)
 }
 
 var Env = map[string]string{

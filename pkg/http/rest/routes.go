@@ -4,43 +4,48 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
 	"github.com/RobinBaeckman/ragnar/pkg/storage/memcache"
 	"github.com/gorilla/mux"
 )
 
+// TODO: make sure I'm using the correct fields as exported.
 type Server struct {
-	userStorage *memcache.UserStorage
-	router      *mux.Router
-	logger      *log.Logger
+	Storage *memcache.Storage
+	Router  *mux.Router
+	Logger  *log.Logger
 }
 
 func (s *Server) Routes() {
 	// Create
-	s.router.Handle("/v1/users",
-		s.checkError(s.log(s.CreateUser()))).Methods("POST")
+	s.Router.Handle("/v1/users",
+		s.CheckError(s.Log(s.CreateUser()))).Methods("POST")
 
 	// Read
-	s.router.Handle("/v1/users/{id}",
-		s.checkError(s.log(s.auth(s.ReadUser())))).Methods("GET")
+	s.Router.Handle("/v1/users/{id}",
+		s.CheckError(s.Log(s.Auth(s.ReadUser())))).Methods("GET")
 
 	// ReadAll
-	s.router.Handle("/v1/users",
-		s.checkError(s.log(s.auth(s.ReadAllUsers())))).Methods("GET")
+	s.Router.Handle("/v1/users",
+		s.CheckError(s.Log(s.Auth(s.ReadAllUsers())))).Methods("GET")
 
 	// Update
-	s.router.Handle("/v1/users/{id}",
-		s.checkError(s.log(s.auth(s.UpdateUser())))).Methods("PUT")
+	s.Router.Handle("/v1/users/{id}",
+		s.CheckError(s.Log(s.Auth(s.UpdateUser())))).Methods("PUT")
 
 	// Delete
-	s.router.Handle("/v1/users/{id}",
-		s.checkError(s.log(s.auth(s.DeleteUser())))).Methods("DELETE")
+	s.Router.Handle("/v1/users/{id}",
+		s.CheckError(s.Log(s.Auth(s.DeleteUser())))).Methods("DELETE")
 
 	// Auth
-	s.router.Handle("/v1/login",
-		s.checkError(s.log(s.Login()))).Methods("POST")
+	s.Router.Handle("/v1/login",
+		s.CheckError(s.Log(s.Login()))).Methods("POST")
 
-	s.router.Handle("/v1/logout",
-		s.checkError(s.log(s.auth(s.Logout())))).Methods("GET")
+	s.Router.Handle("/v1/logout",
+		s.CheckError(s.Log(s.Auth(s.Logout())))).Methods("GET")
 
-	http.Handle("/", s.router)
+	http.Handle("/", s.Router)
+
+	s.Logger.Printf("Running on: %s:%s", ragnar.Env["HOST"], ragnar.Env["PORT"])
+	s.Logger.Fatal(http.ListenAndServe(ragnar.Env["HOST"]+":"+ragnar.Env["PORT"], nil))
 }

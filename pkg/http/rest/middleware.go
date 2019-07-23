@@ -3,8 +3,8 @@ package rest
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"runtime/debug"
+	"time"
 
 	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
 )
@@ -16,15 +16,31 @@ func (f HandlerFuncWithError) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	f(w, r)
 }
 
-func (s *Server) auth(next HandlerFuncWithError) HandlerFuncWithError {
+type logWriter struct {
+}
+
+const (
+	InfoColor    = "\033[1;34m%s\033[0m"
+	NoticeColor  = "\033[1;36m%s\033[0m"
+	WarningColor = "\033[1;33m%s\033[0m"
+	ErrorColor   = "\033[1;31m%s\033[0m"
+	DebugColor   = "\033[0;36m%s\033[0m"
+)
+
+func (writer logWriter) Write(bytes []byte) (int, error) {
+	logOutput := fmt.Sprintf("[%s  %s  ]\t%s", time.Now().UTC().Format("2006-01-02T15:04:05"), ragnar.Env["LOG_PREFIX"], string(bytes))
+	return fmt.Printf(logOutput)
+}
+
+func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 	return func(w http.ResponseWriter, r *http.Request) error {
-		c, err := r.Cookie(os.Getenv("COOKIE_NAME"))
+		c, err := r.Cookie(ragnar.Env["COOKIE_NAME"])
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EFORBIDDEN, Message: "You have to login first", Op: ragnar.Trace(), Err: err}
 			return err
 		}
 
-		email, err := s.userStorage.Redis.Get(c.Value).Result()
+		email, err := s.Storage.MemDB.Get(c.Value)
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EFORBIDDEN, Message: "You have to login first", Op: ragnar.Trace(), Err: err}
 			return err
@@ -34,7 +50,8 @@ func (s *Server) auth(next HandlerFuncWithError) HandlerFuncWithError {
 		if err != nil {
 			switch v := err.(type) {
 			case *ragnar.Error:
-				v.Op = fmt.Sprintf("%s #####User: %s", v.Op, email)
+				// TODO: Make user part of the error instead
+				v.Op = fmt.Sprintf("%s User: %s", v.Op, email)
 			}
 			return err
 		}
@@ -43,19 +60,27 @@ func (s *Server) auth(next HandlerFuncWithError) HandlerFuncWithError {
 	}
 }
 
-func (s *Server) log(next HandlerFuncWithError) HandlerFuncWithError {
+func (s *Server) Log(next HandlerFuncWithError) HandlerFuncWithError {
+	textColor := InfoColor
 	return func(w http.ResponseWriter, r *http.Request) error {
-		s.logger.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+		logOutput := fmt.Sprintf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
+		s.Logger.Printf(textColor, logOutput)
 		err := next(w, r)
 		if err != nil {
 			return err
+		}
+
+		if textColor == InfoColor {
+			textColor = WarningColor
+		} else {
+			textColor = InfoColor
 		}
 
 		return nil
 	}
 }
 
-func (s *Server) checkError(next HandlerFuncWithError) HandlerFuncWithError {
+func (s *Server) CheckError(next HandlerFuncWithError) HandlerFuncWithError {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		if err := next(w, r); err != nil {
 			switch v := err.(type) {
@@ -77,13 +102,13 @@ func (s *Server) checkError(next HandlerFuncWithError) HandlerFuncWithError {
 				}
 
 				if v.Err != nil {
-					s.logger.Printf("#####Code: %v, #####Message: %v, #####Op: %v, #####Error: %v", v.Code, v.Message, v.Op, v.Err)
+					s.Logger.Print(v)
 				} else {
-					s.logger.Printf("#####Status: %v, #####Message: %v, #####Op: %v", v.Code, v.Message, v.Op)
+					s.Logger.Print(v)
 				}
 			default:
 				http.Error(w, v.Error(), 500)
-				s.logger.Printf("Status: %v, Error: %v", 500, v.Error())
+				s.Logger.Printf("Status: %v, Error: %v", 500, v.Error())
 				debug.PrintStack()
 
 			}

@@ -3,61 +3,54 @@ package rest
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
 	"github.com/RobinBaeckman/ragnar/pkg/storage/memcache"
 	"github.com/RobinBaeckman/ragnar/pkg/storage/mysql"
-	"github.com/go-redis/redis"
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/RobinBaeckman/ragnar/pkg/storage/redis"
 	"github.com/gorilla/mux"
 )
 
-func Run() error {
-	l := log.New(os.Stdout, "", 3)
-
-	if err := parseEnv(); err != nil {
-		return err
-	}
-
-	l.SetPrefix(ragnar.Env["LOG_PREFIX"])
-
-	re := newRedis()
+func NewServer() (*Server, error) {
+	l := log.New(logWriter{}, "", 3)
+	l.SetFlags(0)
+	mdb := redis.NewMemDB()
 	db, err := mysql.NewDB()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer db.Close()
 
 	r := mux.NewRouter()
 
-	mdb := &mysql.DB{db}
-	c := memcache.NewUserStorage(mdb, re)
+	c := memcache.NewStorage(db, mdb)
 
-	s := &Server{
-		router:      r,
-		userStorage: c,
-		logger:      l,
+	return &Server{
+		Router:  r,
+		Storage: c,
+		Logger:  l,
+	}, nil
+}
+
+func Run() error {
+	if err := ParseEnv(); err != nil {
+		return err
 	}
 
-	s.Routes()
+	s, err := NewServer()
+	defer s.Storage.DB.Close()
+	if err != nil {
+		return err
+	}
+	// TODO: Fix so db and other things that should close closes at the end of this function
+	//defer s.Storage.DB.Close()
 
-	l.Printf("Running on: %s:%s", ragnar.Env["HOST"], ragnar.Env["PORT"])
-	l.Fatal(http.ListenAndServe(ragnar.Env["HOST"]+":"+ragnar.Env["PORT"], nil))
+	s.Routes()
 
 	return nil
 }
 
-func newRedis() *redis.Client {
-	return redis.NewClient(&redis.Options{
-		Addr:     ragnar.Env["REDIS_HOST"] + ":" + ragnar.Env["REDIS_PORT"],
-		Password: "", // no password set
-		DB:       0,  // use default DB
-	})
-}
-
-func parseEnv() error {
+func ParseEnv() error {
 	for key, _ := range ragnar.Env {
 		if v, ok := os.LookupEnv(key); ok {
 			ragnar.Env[key] = v

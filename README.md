@@ -20,7 +20,7 @@ go mod vendor
 ```
 export HOST="localhost" &&\
 export PORT="3000" &&\
-export LOG_PREFIX="#[ragnar-api]#: " &&\
+export LOG_PREFIX="ragnar-api" &&\
 export MYSQL_HOST="127.0.0.1" &&\
 export MYSQL_PORT="3306" &&\
 export MYSQL_USER="ruser" &&\
@@ -59,7 +59,7 @@ curl -v -d @scripts/curl_tests/create_user.json -X POST http://localhost:3000/v1
 
 Login
 ```
-curl -v -c /tmp/cookie-jar.txt -d @tests/endpoints/login.json http://localhost:3000/v1/login
+curl -v -c /tmp/cookie-jar.txt -d @scripts/curl_tests/login.json http://localhost:3000/v1/login
 ```
 
 Read user

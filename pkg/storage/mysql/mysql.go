@@ -7,38 +7,40 @@ import (
 	"log"
 
 	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-func NewDB() (*sql.DB, error) {
+// TODO: Implement new error handling
+func NewDB() (DB, error) {
 	db, err := sql.Open("mysql", ragnar.Env["MYSQL_USER"]+":"+ragnar.Env["MYSQL_PASS"]+"@tcp("+ragnar.Env["MYSQL_HOST"]+")/"+ragnar.Env["MYSQL_DB"])
 	if err != nil {
-		return nil, fmt.Errorf("Can't connect to db\n")
+		return DB{}, fmt.Errorf("Can't connect to db\n %s", err)
 	}
 
-	return db, nil
+	return DB{db}, nil
 }
 
 type DB struct {
 	*sql.DB
 }
 
-func (s *DB) Create(u *ragnar.User) error {
-	stmtIns, err := s.Prepare("INSERT INTO users(id, email, password, first_name, last_name, role) VALUES(?,?,?,?,?,?)")
+func (db DB) Create(u *ragnar.User) error {
+	stmtIns, err := db.Prepare("INSERT INTO users(id, email, password, first_name, last_name, role) VALUES(?,?,?,?,?,?)")
 	if err != nil {
-		return &ragnar.Error{Code: ragnar.ECONFLICT, Message: "Username already exists", Op: ragnar.Trace(), Err: err}
+		return &ragnar.Error{Code: ragnar.ECONFLICT, Op: ragnar.Trace(), Err: err}
 	}
 	defer stmtIns.Close()
 
 	_, err = stmtIns.Exec(u.ID, u.Email, u.PasswordHash, u.FirstName, u.LastName, u.Role)
 	if err != nil {
-		return &ragnar.Error{Code: ragnar.ECONFLICT, Message: "Username already exists", Op: ragnar.Trace(), Err: err}
+		return &ragnar.Error{Code: ragnar.ECONFLICT, Op: ragnar.Trace(), Err: err}
 	}
 
 	return nil
 }
 
-func (s *DB) Read(u *ragnar.User) error {
-	err := s.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE id=?", u.ID).Scan(&u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
+func (db DB) Read(u *ragnar.User) error {
+	err := db.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE id=?", u.ID).Scan(&u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
 	switch {
 	case err == sql.ErrNoRows:
 		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
@@ -49,8 +51,8 @@ func (s *DB) Read(u *ragnar.User) error {
 	return nil
 }
 
-func (s *DB) ReadByEmail(u *ragnar.User) error {
-	err := s.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE email=?", u.Email).Scan(&u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
+func (db DB) ReadByEmail(u *ragnar.User) error {
+	err := db.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE email=?", u.Email).Scan(&u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
 	switch {
 	case err == sql.ErrNoRows:
 		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
@@ -58,14 +60,13 @@ func (s *DB) ReadByEmail(u *ragnar.User) error {
 		log.Fatal(err)
 		return err
 	default:
-		fmt.Printf("Email is %s\n", u.Email)
 	}
 
 	return nil
 }
 
-func (s *DB) ReadAll(us *[]ragnar.User) error {
-	rows, err := s.Query("SELECT * FROM users")
+func (db DB) ReadAll(us *[]ragnar.User) error {
+	rows, err := db.Query("SELECT * FROM users")
 	if err != nil {
 		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
 	}
@@ -82,8 +83,8 @@ func (s *DB) ReadAll(us *[]ragnar.User) error {
 	return nil
 }
 
-func (s *DB) Update(u *ragnar.User) error {
-	stmtIns, err := s.Prepare("UPDATE users set email=?, password=?, first_name=?, last_name=?, role=? where id=?")
+func (db DB) Update(u *ragnar.User) error {
+	stmtIns, err := db.Prepare("UPDATE users set email=?, password=?, first_name=?, last_name=?, role=? where id=?")
 	defer stmtIns.Close()
 	if err != nil {
 		return err
@@ -97,8 +98,9 @@ func (s *DB) Update(u *ragnar.User) error {
 	return nil
 }
 
-func (s *DB) Delete(u *ragnar.User) error {
-	stmtIns, err := s.Prepare("DELETE from users where id=?")
+// TODO: maybe implement soft delete
+func (db DB) Delete(u *ragnar.User) error {
+	stmtIns, err := db.Prepare("DELETE from users where id=?")
 	if err != nil {
 		return err
 	}
@@ -107,6 +109,19 @@ func (s *DB) Delete(u *ragnar.User) error {
 	_, err = stmtIns.Exec(u.ID)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (db DB) Close() {
+	defer db.DB.Close()
+}
+
+func (db DB) CleanupTables() error {
+	_, err := db.Query("TRUNCATE TABLE users")
+	if err != nil {
+		return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
 	}
 
 	return nil
