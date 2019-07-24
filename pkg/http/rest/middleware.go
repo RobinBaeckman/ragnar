@@ -19,12 +19,11 @@ func (f HandlerFuncWithError) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 type logWriter struct {
 }
 
+// TODO: make text color platform agnostic
 const (
-	InfoColor    = "\033[1;34m%s\033[0m"
-	NoticeColor  = "\033[1;36m%s\033[0m"
-	WarningColor = "\033[1;33m%s\033[0m"
-	ErrorColor   = "\033[1;31m%s\033[0m"
-	DebugColor   = "\033[0;36m%s\033[0m"
+	BlueColor      = " \033[1;34m%s\033[0m "
+	LightBlueColor = " \033[1;36m%s\033[0m "
+	YellowColor    = " \033[1;33m%s\033[0m "
 )
 
 func (writer logWriter) Write(bytes []byte) (int, error) {
@@ -60,28 +59,11 @@ func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 	}
 }
 
-func (s *Server) Log(next HandlerFuncWithError) HandlerFuncWithError {
-	textColor := InfoColor
-	return func(w http.ResponseWriter, r *http.Request) error {
-		logOutput := fmt.Sprintf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
-		s.Logger.Printf(textColor, logOutput)
-		err := next(w, r)
-		if err != nil {
-			return err
-		}
-
-		if textColor == InfoColor {
-			textColor = WarningColor
-		} else {
-			textColor = InfoColor
-		}
-
-		return nil
-	}
-}
-
-func (s *Server) CheckError(next HandlerFuncWithError) HandlerFuncWithError {
+func (s *Server) LogAndError(next HandlerFuncWithError) HandlerFuncWithError {
+	textColor := BlueColor
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
+		logOutput := fmt.Sprintf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
+		s.Logger.Printf(textColor, logOutput)
 		if err := next(w, r); err != nil {
 			switch v := err.(type) {
 			case *ragnar.Error:
@@ -102,16 +84,21 @@ func (s *Server) CheckError(next HandlerFuncWithError) HandlerFuncWithError {
 				}
 
 				if v.Err != nil {
-					s.Logger.Print(v)
+					s.Logger.Printf(textColor, v)
 				} else {
-					s.Logger.Print(v)
+					s.Logger.Printf(textColor, v)
 				}
 			default:
 				http.Error(w, v.Error(), 500)
-				s.Logger.Printf("Status: %v, Error: %v", 500, v.Error())
+				logOutput = fmt.Sprintf("Status: %v, Error: %v", 500, v.Error())
+				s.Logger.Printf(textColor, logOutput)
 				debug.PrintStack()
-
 			}
+		}
+		if textColor == BlueColor {
+			textColor = YellowColor
+		} else {
+			textColor = BlueColor
 		}
 		return err
 	}

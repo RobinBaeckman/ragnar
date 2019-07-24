@@ -43,7 +43,7 @@ func (db DB) Read(u *ragnar.User) error {
 	err := db.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE id=?", u.ID).Scan(&u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
 	switch {
 	case err == sql.ErrNoRows:
-		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
+		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: fmt.Sprintf("No user with that ID: %s", u.ID), Op: ragnar.Trace(), Err: err}
 	case err != nil:
 		log.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func (db DB) ReadByEmail(u *ragnar.User) error {
 	err := db.QueryRow("SELECT email, password, first_name, last_name, role FROM users WHERE email=?", u.Email).Scan(&u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
 	switch {
 	case err == sql.ErrNoRows:
-		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
+		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: fmt.Sprintf("No user with that ID: %s", u.ID), Op: ragnar.Trace(), Err: err}
 	case err != nil:
 		log.Fatal(err)
 		return err
@@ -68,14 +68,14 @@ func (db DB) ReadByEmail(u *ragnar.User) error {
 func (db DB) ReadAll(us *[]ragnar.User) error {
 	rows, err := db.Query("SELECT * FROM users")
 	if err != nil {
-		return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
+		return &ragnar.Error{Code: ragnar.ENOTFOUND, Op: ragnar.Trace(), Err: err}
 	}
 
 	for rows.Next() {
 		u := ragnar.User{}
 		err = rows.Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role, &u.CreatedAt)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: "No user with that ID.", Op: ragnar.Trace(), Err: err}
+			return &ragnar.Error{Code: ragnar.ENOTFOUND, Message: fmt.Sprintf("No user with that ID: %s", u.ID), Op: ragnar.Trace(), Err: err}
 		}
 		*us = append(*us, u)
 	}

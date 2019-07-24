@@ -19,30 +19,30 @@ type Server struct {
 func (s *Server) Routes() {
 	// Create
 	s.Router.Handle("/v1/users",
-		s.CheckError(s.Log(s.CreateUser()))).Methods("POST")
+		s.LogAndError(s.CreateUser())).Methods("POST")
 
 	// Read
 	s.Router.Handle("/v1/users/{id}",
-		s.CheckError(s.Log(s.Auth(s.ReadUser())))).Methods("GET")
+		s.LogAndError(s.Auth(s.ReadUser()))).Methods("GET")
 
 	// ReadAll
 	s.Router.Handle("/v1/users",
-		s.CheckError(s.Log(s.Auth(s.ReadAllUsers())))).Methods("GET")
+		s.LogAndError(s.Auth(s.ReadAllUsers()))).Methods("GET")
 
 	// Update
 	s.Router.Handle("/v1/users/{id}",
-		s.CheckError(s.Log(s.Auth(s.UpdateUser())))).Methods("PUT")
+		s.LogAndError(s.Auth(s.UpdateUser()))).Methods("PUT")
 
 	// Delete
 	s.Router.Handle("/v1/users/{id}",
-		s.CheckError(s.Log(s.Auth(s.DeleteUser())))).Methods("DELETE")
+		s.LogAndError(s.Auth(s.DeleteUser()))).Methods("DELETE")
 
 	// Auth
 	s.Router.Handle("/v1/login",
-		s.CheckError(s.Log(s.Login()))).Methods("POST")
+		s.LogAndError(s.Login())).Methods("POST")
 
 	s.Router.Handle("/v1/logout",
-		s.CheckError(s.Log(s.Auth(s.Logout())))).Methods("GET")
+		s.LogAndError(s.Auth(s.Logout()))).Methods("GET")
 
 	http.Handle("/", s.Router)
 
