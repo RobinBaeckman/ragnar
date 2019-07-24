@@ -89,3 +89,16 @@ Delete user
 curl -v -i -L -b /tmp/cookie-jar.txt -X DELETE http://localhost:3000/v1/users/{id}
 
 ```
+
+Run load test
+```
+cd ragnar-api/scripts/load_test
+k6 run perfect-field.js
+```
+
+Run benchmark without testing. CreateUser example.
+```
+go test -bench=BenchmarkCreateUser -run=XXX -cpuprofile=cpu.out
+go tool pprof rest.test cpu.out
+top50
+```

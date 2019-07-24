@@ -15,13 +15,13 @@ func Trace() string {
 }
 
 type User struct {
-	ID           string
-	Email        string
-	Password     string
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	Password     string `json:"password,omitempty"`
 	PasswordHash []byte `json:"-"`
-	FirstName    string
-	LastName     string
-	Role         string
+	FirstName    string `json:"firstName"`
+	LastName     string `json:"lastName"`
+	Role         string `json:"role"`
 	CreatedAt    string `json:"-"`
 }
 

@@ -22,23 +22,13 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 			return err
 		}
 
-		var msg string
-		switch {
-		case !valid.Email(u.Email):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
-		case !valid.Password(u.Password):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
-		case !valid.FirstName(u.FirstName):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.FirstName)
-		case !valid.LastName(u.LastName):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.LastName)
-		}
-		if msg != "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
+		if err := validate(u); err != nil {
+			return err
 		}
 
 		u.ID = uuid.New().String()
 
+		// TODO: make the hash in the database instead
 		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
@@ -51,6 +41,10 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 		if err != nil {
 			return err
 		}
+
+		// TODO: Fix a better solution for this
+		u.PasswordHash = nil
+		u.Password = ""
 
 		b, err := json.Marshal(u)
 		if err != nil {
@@ -67,7 +61,6 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 	}
 }
 
-// TODO: make sure the password is returned too
 func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		u := &ragnar.User{}
@@ -127,21 +120,13 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 		u.ID = mux.Vars(r)["id"]
 
-		var msg string
-		switch {
-		case !valid.UUID(u.ID):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.ID)
-		case !valid.Email(u.Email):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
-		case !valid.Password(u.Password):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
-		case !valid.FirstName(u.FirstName):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.FirstName)
-		case !valid.LastName(u.LastName):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.LastName)
+		// TODO: integrate with validate function
+		if !valid.UUID(u.ID) {
+			return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid id: %v", u.ID), Op: ragnar.Trace()}
 		}
-		if msg != "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
+
+		if err := validate(u); err != nil {
+			return err
 		}
 
 		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
@@ -156,6 +141,10 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 		if err != nil {
 			return err
 		}
+
+		// TODO: Fix a better solution for this
+		u.PasswordHash = nil
+		u.Password = ""
 
 		b, err := json.Marshal(u)
 		if err != nil {
@@ -261,4 +250,19 @@ func (s *Server) Logout() func(http.ResponseWriter, *http.Request) error {
 
 		return nil
 	}
+}
+
+func validate(u *ragnar.User) error {
+	switch {
+	case !valid.Email(u.Email):
+		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+	case !valid.Password(u.Password):
+		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+	case !valid.FirstName(u.FirstName):
+		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+	case !valid.LastName(u.LastName):
+		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+	}
+
+	return nil
 }

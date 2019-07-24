@@ -27,6 +27,7 @@ var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 	dbenv := os.Getenv("MYSQL_DB")
+	// TODO: change from static to env test db
 	os.Setenv("MYSQL_DB", "ragnar_db_test")
 	err := rest.ParseEnv()
 	if err != nil {
@@ -69,7 +70,7 @@ func TestCreateUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := s.CheckError(s.CreateUser())
+	h := s.LogAndError(s.CreateUser())
 
 	w := httptest.NewRecorder()
 	err = h(w, r)
@@ -89,12 +90,18 @@ func TestCreateUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !valid.UUID(resB.ID) ||
-		resB.Email != reqB.Email ||
-		resB.Password != reqB.Password ||
-		resB.FirstName != reqB.FirstName ||
-		resB.LastName != reqB.LastName {
-		t.Error("not valid responsedata")
+	// TODO: make this a function instead
+	switch {
+	case !valid.UUID(resB.ID):
+		t.Errorf("Invalid uuid: %v", resB.ID)
+	case resB.Email != reqB.Email:
+		t.Errorf("Invalid parameters: %v or %v", resB.Email, reqB.Email)
+	case resB.Password != "":
+		t.Errorf("Password should be empty, for security reasons")
+	case resB.FirstName != reqB.FirstName:
+		t.Errorf("Invalid parameters: %v or %v", resB.FirstName, reqB.FirstName)
+	case resB.LastName != reqB.LastName:
+		t.Errorf("Invalid parameters: %v or %v", resB.FirstName, reqB.FirstName)
 	}
 
 	*us = append(*us, *resB)
@@ -110,7 +117,7 @@ func TestReadUser(t *testing.T) {
 		"id": (*us)[0].ID,
 	})
 
-	h := s.CheckError(s.ReadUser())
+	h := s.LogAndError(s.ReadUser())
 
 	w := httptest.NewRecorder()
 	err = h(w, r)
@@ -130,13 +137,17 @@ func TestReadUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if resB.ID != (*us)[0].ID ||
-		resB.Email != (*us)[0].Email ||
-		// TODO: make sure all input is validated
-		//resB.Password != u.Password ||
-		resB.FirstName != (*us)[0].FirstName ||
-		resB.LastName != (*us)[0].LastName {
-		t.Error("not valid responsedata")
+	switch {
+	case resB.ID != (*us)[0].ID:
+		t.Errorf("Invalid parameters: %v or %v", resB.ID, (*us)[0].ID)
+	case resB.Email != (*us)[0].Email:
+		t.Errorf("Invalid parameters: %v or %v", resB.Email, (*us)[0].Email)
+	case resB.Password != "":
+		t.Errorf("Password should be empty for security reasons")
+	case resB.FirstName != (*us)[0].FirstName:
+		t.Errorf("Invalid parameters: %v or %v", resB.FirstName, (*us)[0].FirstName)
+	case resB.LastName != (*us)[0].LastName:
+		t.Errorf("Invalid parameters: %v or %v", resB.FirstName, (*us)[0].FirstName)
 	}
 }
 
@@ -146,7 +157,8 @@ func TestReadAllUsers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := s.CheckError(s.ReadAllUsers())
+	// add all middleware that usually is there to get a more genuine test
+	h := s.LogAndError(s.ReadAllUsers())
 
 	w := httptest.NewRecorder()
 	err = h(w, r)
@@ -179,8 +191,8 @@ func TestReadAllUsers(t *testing.T) {
 			t.Errorf("Invalid parameters: %v or %v", resB.ID, (*us)[i].ID)
 		case resB.Email != (*us)[i].Email:
 			t.Errorf("Invalid parameters: %v or %v", resB.Email, (*us)[i].Email)
-		case resB.Password != (*us)[i].Password:
-			t.Errorf("Invalid parameters: %v or %v", resB.Password, (*us)[i].Password)
+		case resB.Password != "":
+			t.Errorf("Password should be empty, for security reasons")
 		case resB.FirstName != (*us)[i].FirstName:
 			t.Errorf("Invalid parameters: %v or %v", resB.FirstName, (*us)[i].FirstName)
 		case resB.LastName != (*us)[i].LastName:
@@ -203,7 +215,11 @@ func TestUpdateUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := s.CheckError(s.UpdateUser())
+	r = mux.SetURLVars(r, map[string]string{
+		"id": (*us)[1].ID,
+	})
+
+	h := s.LogAndError(s.UpdateUser())
 
 	w := httptest.NewRecorder()
 	err = h(w, r)
@@ -223,15 +239,49 @@ func TestUpdateUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !valid.UUID(resB.ID) ||
-		resB.Email != reqB.Email ||
-		resB.Password != reqB.Password ||
-		resB.FirstName != reqB.FirstName ||
-		resB.LastName != reqB.LastName {
-		t.Error("not valid responsedata")
+	t.Log(resB)
+
+	switch {
+	case !valid.UUID(resB.ID):
+		t.Errorf("Invalid uuid: %v", resB.ID)
+	case resB.Email != reqB.Email:
+		t.Errorf("Invalid parameters: %v or %v", resB.Email, reqB.Email)
+	case resB.Password != "":
+		t.Errorf("Password should be empty, for security reasons")
+	case resB.FirstName != reqB.FirstName:
+		t.Errorf("Invalid parameters: %v or %v", resB.FirstName, reqB.FirstName)
+	case resB.LastName != reqB.LastName:
+		t.Errorf("Invalid parameters: %v or %v", resB.FirstName, reqB.FirstName)
 	}
 
 	*us = append(*us, *resB)
+}
+
+func BenchmarkCreateUser(b *testing.B) {
+	reqB := &ragnar.User{}
+	generateUserData(reqB)
+
+	bt, err := json.Marshal(reqB)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
+	// TODO: change from static to env hostname
+	r, err := http.NewRequest("POST", "localhost:3000/v1/users", bytes.NewBuffer(bt))
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	h := s.LogAndError(s.CreateUser())
+
+	for i := 0; i < b.N; i++ {
+		w := httptest.NewRecorder()
+		err = h(w, r)
+	}
+	if err != nil {
+		b.Fatal(err)
+	}
 }
 
 func generateUserData(u *ragnar.User) {

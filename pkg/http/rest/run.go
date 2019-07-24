@@ -42,8 +42,6 @@ func Run() error {
 	if err != nil {
 		return err
 	}
-	// TODO: Fix so db and other things that should close closes at the end of this function
-	//defer s.Storage.DB.Close()
 
 	s.Routes()
 
