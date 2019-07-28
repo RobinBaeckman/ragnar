@@ -3,17 +3,17 @@ package memcache
 import (
 	"sync"
 
-	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
+	"github.com/RobinBaeckman/rolf/pkg/rolf"
 )
 
-func (s *Storage) memGet(key string) *ragnar.User {
+func (s *Storage) memGet(key string) *rolf.User {
 	s.mux.Lock()
 	// Lock so only one goroutine at a time can access the map c.v.
 	defer s.mux.Unlock()
 	return s.Memcache[key]
 }
 
-func (s *Storage) memSet(u *ragnar.User) {
+func (s *Storage) memSet(u *rolf.User) {
 	s.mux.Lock()
 	s.Memcache[u.ID] = u
 	s.mux.Unlock()
@@ -27,17 +27,17 @@ func (s *Storage) memDel(key string) {
 
 // UserStorage wraps a UserService to provide an in-memory cache.
 type Storage struct {
-	Memcache map[string]*ragnar.User
-	DB       ragnar.DB
-	MemDB    ragnar.MemDB
+	Memcache map[string]*rolf.User
+	DB       rolf.DB
+	MemDB    rolf.MemDB
 	mux      sync.Mutex
 }
 
 // NewUserCache returns a new read-through cache for service.
 // TODO: change all fields to correct visuality
-func NewStorage(db ragnar.DB, mdb ragnar.MemDB) *Storage {
+func NewStorage(db rolf.DB, mdb rolf.MemDB) *Storage {
 	return &Storage{
-		Memcache: make(map[string]*ragnar.User),
+		Memcache: make(map[string]*rolf.User),
 		DB:       db,
 		MemDB:    mdb,
 	}
@@ -45,7 +45,7 @@ func NewStorage(db ragnar.DB, mdb ragnar.MemDB) *Storage {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (s *Storage) Create(u *ragnar.User) error {
+func (s *Storage) Create(u *rolf.User) error {
 	err := s.DB.Create(u)
 	if err != nil {
 		return err
@@ -58,7 +58,7 @@ func (s *Storage) Create(u *ragnar.User) error {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (s *Storage) Read(u *ragnar.User) error {
+func (s *Storage) Read(u *rolf.User) error {
 	// Check the local cache first.
 
 	if uc := s.memGet(u.ID); uc != nil {
@@ -79,7 +79,7 @@ func (s *Storage) Read(u *ragnar.User) error {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (s *Storage) ReadByEmail(u *ragnar.User) error {
+func (s *Storage) ReadByEmail(u *rolf.User) error {
 	// Check the local cache first.
 	if uc := s.memGet(u.ID); uc != nil {
 		u = uc
@@ -100,7 +100,7 @@ func (s *Storage) ReadByEmail(u *ragnar.User) error {
 
 // User returns a user for a given id.
 // Returns the cached instance if available.
-func (s *Storage) Update(u *ragnar.User) error {
+func (s *Storage) Update(u *rolf.User) error {
 	err := s.DB.Update(u)
 	if err != nil {
 		return err
@@ -111,7 +111,7 @@ func (s *Storage) Update(u *ragnar.User) error {
 	return err
 }
 
-func (s *Storage) Delete(u *ragnar.User) error {
+func (s *Storage) Delete(u *rolf.User) error {
 	err := s.DB.Delete(u)
 	if err != nil {
 		return err

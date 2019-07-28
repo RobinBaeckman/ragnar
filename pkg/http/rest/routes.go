@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
-	"github.com/RobinBaeckman/ragnar/pkg/storage/memcache"
+	"github.com/RobinBaeckman/rolf/pkg/rolf"
+	"github.com/RobinBaeckman/rolf/pkg/storage/memcache"
 	"github.com/gorilla/mux"
 )
 
@@ -46,6 +46,6 @@ func (s *Server) Routes() {
 
 	http.Handle("/", s.Router)
 
-	s.Logger.Printf("Running on: %s:%s", ragnar.Env["HOST"], ragnar.Env["PORT"])
-	s.Logger.Fatal(http.ListenAndServe(ragnar.Env["HOST"]+":"+ragnar.Env["PORT"], nil))
+	s.Logger.Printf("Running on: %s:%s", rolf.Env["HOST"], rolf.Env["PORT"])
+	s.Logger.Fatal(http.ListenAndServe(rolf.Env["HOST"]+":"+rolf.Env["PORT"], nil))
 }

@@ -5,9 +5,9 @@ services:
    volumes:
       - ./configs:/docker-entrypoint-initdb.d
    restart: always
-   container_name: ragnar_mysql
+   container_name: rolf_mysql
    environment:
-      MYSQL_DATABASE: ragnar_db 
+      MYSQL_DATABASE: rolf_db 
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_USER: ruser 
       MYSQL_PASSWORD: secret
@@ -15,6 +15,6 @@ services:
      - 3306:3306
  redis:
    image: redis
-   container_name: ragnar_redis 
+   container_name: rolf_redis 
    ports:
      - 6379:6379

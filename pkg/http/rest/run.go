@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
-	"github.com/RobinBaeckman/ragnar/pkg/storage/memcache"
-	"github.com/RobinBaeckman/ragnar/pkg/storage/mysql"
-	"github.com/RobinBaeckman/ragnar/pkg/storage/redis"
+	"github.com/RobinBaeckman/rolf/pkg/rolf"
+	"github.com/RobinBaeckman/rolf/pkg/storage/memcache"
+	"github.com/RobinBaeckman/rolf/pkg/storage/mysql"
+	"github.com/RobinBaeckman/rolf/pkg/storage/redis"
 	"github.com/gorilla/mux"
 )
 
@@ -49,9 +49,9 @@ func Run() error {
 }
 
 func ParseEnv() error {
-	for key, _ := range ragnar.Env {
+	for key, _ := range rolf.Env {
 		if v, ok := os.LookupEnv(key); ok {
-			ragnar.Env[key] = v
+			rolf.Env[key] = v
 		} else {
 			return fmt.Errorf("missing env variable: %s\n", key)
 		}

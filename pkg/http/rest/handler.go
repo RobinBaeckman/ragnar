@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
-	"github.com/RobinBaeckman/ragnar/pkg/valid"
+	"github.com/RobinBaeckman/rolf/pkg/rolf"
+	"github.com/RobinBaeckman/rolf/pkg/valid"
 	uuid "github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
@@ -16,7 +16,7 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 	// TODO: thing := prepareThing()
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		// use thing
-		u := &ragnar.User{}
+		u := &rolf.User{}
 		err = decode(r, u)
 		if err != nil {
 			return err
@@ -31,7 +31,7 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 		// TODO: make the hash in the database instead
 		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		// TODO: build better Role implementation
@@ -48,10 +48,10 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 
 		b, err := json.Marshal(u)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
-		url := fmt.Sprintf("%s://%s:%s/v1/users/%s", ragnar.Env["PROTO"], ragnar.Env["HOST"], ragnar.Env["PORT"], u.ID)
+		url := fmt.Sprintf("%s://%s:%s/v1/users/%s", rolf.Env["PROTO"], rolf.Env["HOST"], rolf.Env["PORT"], u.ID)
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Location", url)
 		w.WriteHeader(http.StatusCreated)
@@ -63,11 +63,11 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		u := &ragnar.User{}
+		u := &rolf.User{}
 		u.ID = mux.Vars(r)["id"]
 
 		if !valid.UUID(u.ID) {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Invalid UUID.", Op: ragnar.Trace()}
+			return &rolf.Error{Code: rolf.EINVALID, Message: "Invalid UUID.", Op: rolf.Trace()}
 		}
 
 		err = s.Storage.Read(u)
@@ -77,7 +77,7 @@ func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 
 		b, err := json.Marshal(u)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -90,7 +90,7 @@ func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 // TODO: make sure the password is returned too
 func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		us := &[]ragnar.User{}
+		us := &[]rolf.User{}
 		// TODO: add ReadAll to memcache
 		err = s.Storage.DB.ReadAll(us)
 		if err != nil {
@@ -100,7 +100,7 @@ func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 		// Todo: create a map called mapUserToResp
 		b, err := json.Marshal(us)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -112,7 +112,7 @@ func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		u := &ragnar.User{}
+		u := &rolf.User{}
 		err = decode(r, u)
 		if err != nil {
 			return err
@@ -122,7 +122,7 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 		// TODO: integrate with validate function
 		if !valid.UUID(u.ID) {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid id: %v", u.ID), Op: ragnar.Trace()}
+			return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid UUID: %v", u.ID), Op: rolf.Trace()}
 		}
 
 		if err := validate(u); err != nil {
@@ -131,7 +131,7 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		// TODO: build better Role implementation
@@ -148,7 +148,7 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 		b, err := json.Marshal(u)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -160,11 +160,11 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		u := &ragnar.User{}
+		u := &rolf.User{}
 		u.ID = mux.Vars(r)["id"]
 
 		if !valid.UUID(u.ID) {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: "Invalid UUID.", Op: ragnar.Trace()}
+			return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid UUID: %v", u.ID), Op: rolf.Trace()}
 		}
 
 		err = s.Storage.Delete(u)
@@ -174,7 +174,7 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 
 		b, err := json.Marshal(u)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -186,20 +186,16 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		u := &ragnar.User{}
+		u := &rolf.User{}
 		if err := decode(r, u); err != nil {
 			return err
 		}
 
-		var msg string
 		switch {
 		case !valid.Email(u.Email):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.Email)
+			return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid email: %v", u.Email), Op: rolf.Trace()}
 		case !valid.Password(u.Password):
-			msg = fmt.Sprintf("Invalid parameter: %v", u.Password)
-		}
-		if msg != "" {
-			return &ragnar.Error{Code: ragnar.EINVALID, Message: msg, Op: ragnar.Trace()}
+			return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid password: %v", u.Password), Op: rolf.Trace()}
 		}
 
 		if err = s.Storage.DB.ReadByEmail(u); err != nil {
@@ -207,26 +203,29 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 		}
 
 		if err := bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(u.Password)); err != nil {
-			return &ragnar.Error{Code: ragnar.EUNAUTHORIZED, Message: "Wrong username or password.", Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EUNAUTHORIZED, Message: "Wrong username or password.", Op: rolf.Trace(), Err: err}
 		}
 
 		uid := uuid.New().String()
 
 		err = s.Storage.MemDB.Set(uid, u.Email, 0)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EUNAUTHORIZED, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EUNAUTHORIZED, Op: rolf.Trace(), Err: err}
 		}
 
 		c := http.Cookie{
-			Name:     ragnar.Env["COOKIE_NAME"],
+			Name:     rolf.Env["COOKIE_NAME"],
 			Value:    uid,
 			HttpOnly: true,
 		}
 		http.SetCookie(w, &c)
 
+		u.Password = ""
+		u.PasswordHash = nil
+
 		b, err := json.Marshal(u)
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EINTERNAL, Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -238,9 +237,9 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) Logout() func(http.ResponseWriter, *http.Request) error {
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		c, err := r.Cookie(ragnar.Env["COOKIE_NAME"])
+		c, err := r.Cookie(rolf.Env["COOKIE_NAME"])
 		if err != nil {
-			return &ragnar.Error{Code: ragnar.EFORBIDDEN, Message: "You are already logged out.", Op: ragnar.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EFORBIDDEN, Message: "You are already logged out.", Op: rolf.Trace(), Err: err}
 		}
 		v := c.Value
 
@@ -252,16 +251,17 @@ func (s *Server) Logout() func(http.ResponseWriter, *http.Request) error {
 	}
 }
 
-func validate(u *ragnar.User) error {
+// TODO: make seperate functions for each validation instead.
+func validate(u *rolf.User) error {
 	switch {
 	case !valid.Email(u.Email):
-		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+		return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid email: %v", u.Email), Op: rolf.Trace()}
 	case !valid.Password(u.Password):
-		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+		return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid password: %v", u.Password), Op: rolf.Trace()}
 	case !valid.FirstName(u.FirstName):
-		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+		return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid firstName: %v", u.FirstName), Op: rolf.Trace()}
 	case !valid.LastName(u.LastName):
-		return &ragnar.Error{Code: ragnar.EINVALID, Message: fmt.Sprintf("Invalid parameter: %v", u.Email), Op: ragnar.Trace()}
+		return &rolf.Error{Code: rolf.EINVALID, Message: fmt.Sprintf("Invalid lastName: %v", u.LastName), Op: rolf.Trace()}
 	}
 
 	return nil

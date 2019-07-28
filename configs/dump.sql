@@ -1,9 +1,9 @@
 UPDATE mysql.user SET Host='%' WHERE Host='localhost' AND User='ruser';
 GRANT ALL PRIVILEGES ON *.* TO 'ruser'@'%';
 FLUSH PRIVILEGES;
-CREATE DATABASE IF NOT EXISTS ragnar_db;
-CREATE DATABASE IF NOT EXISTS ragnar_db_test;
-USE ragnar_db;
+CREATE DATABASE IF NOT EXISTS rolf_db;
+CREATE DATABASE IF NOT EXISTS rolf_db_test;
+USE rolf_db;
 CREATE TABLE IF NOT EXISTS `users` (
 	`id` CHAR(36) UNIQUE NOT NULL,
 	`email` VARCHAR(64) UNIQUE NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 	`created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (`id`)
 );
-USE ragnar_db_test;
+USE rolf_db_test;
 CREATE TABLE IF NOT EXISTS `users` (
 	`id` CHAR(36) UNIQUE NOT NULL,
 	`email` VARCHAR(64) UNIQUE NOT NULL,

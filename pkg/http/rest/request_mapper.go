@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/RobinBaeckman/ragnar/pkg/ragnar"
+	"github.com/RobinBaeckman/rolf/pkg/rolf"
 )
 
-func decode(r *http.Request, u *ragnar.User) error {
+func decode(r *http.Request, u *rolf.User) error {
 	decoder := json.NewDecoder(r.Body)
 	defer r.Body.Close()
 
 	err := decoder.Decode(u)
 	if err != nil {
-		return &ragnar.Error{Code: ragnar.EINVALID, Message: "Missing parameters", Op: ragnar.Trace(), Err: err}
+		return &rolf.Error{Code: rolf.EINVALID, Message: "Missing parameters", Op: rolf.Trace(), Err: err}
 	}
 
 	return nil
