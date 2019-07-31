@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/RobinBaeckman/rolf/pkg/rolf"
 	"github.com/RobinBaeckman/rolf/pkg/valid"
+	"github.com/dgrijalva/jwt-go"
 	uuid "github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
@@ -206,17 +208,27 @@ func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 			return &rolf.Error{Code: rolf.EUNAUTHORIZED, Message: "Wrong username or password.", Op: rolf.Trace(), Err: err}
 		}
 
-		uid := uuid.New().String()
+		et := time.Now().Add(5 * time.Minute)
 
-		err = s.Storage.MemDB.Set(uid, u.Email, 0)
+		claims := &claims{
+			email: u.Email,
+			StandardClaims: jwt.StandardClaims{
+				ExpiresAt: et.Unix(),
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		tokenString, err := token.SignedString(jwtKey)
 		if err != nil {
-			return &rolf.Error{Code: rolf.EUNAUTHORIZED, Op: rolf.Trace(), Err: err}
+			return &rolf.Error{Code: rolf.EINTERNAL, Op: rolf.Trace(), Err: err}
 		}
 
 		c := http.Cookie{
 			Name:     rolf.Env["COOKIE_NAME"],
-			Value:    uid,
+			Value:    tokenString,
 			HttpOnly: true,
+			Expires:  et,
 		}
 		http.SetCookie(w, &c)
 

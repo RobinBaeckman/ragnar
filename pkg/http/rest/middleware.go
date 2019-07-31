@@ -7,7 +7,15 @@ import (
 	"time"
 
 	"github.com/RobinBaeckman/rolf/pkg/rolf"
+	"github.com/dgrijalva/jwt-go"
 )
+
+type claims struct {
+	email string `json:"email"`
+	jwt.StandardClaims
+}
+
+var jwtKey = []byte(rolf.Env["JWT_KEY"])
 
 type HandlerFuncWithError func(http.ResponseWriter, *http.Request) error
 
@@ -29,13 +37,23 @@ func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 		c, err := r.Cookie(rolf.Env["COOKIE_NAME"])
 		if err != nil {
 			return &rolf.Error{Code: rolf.EFORBIDDEN, Message: "You have to login first", Op: rolf.Trace(), Err: err}
-			return err
 		}
+		tknStr := c.Value
 
-		email, err := s.Storage.MemDB.Get(c.Value)
+		// Initialize a new instance of `Claims`
+		claims := &claims{}
+		tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
 		if err != nil {
-			return &rolf.Error{Code: rolf.EFORBIDDEN, Message: "You have to login first", Op: rolf.Trace(), Err: err}
-			return err
+			if err == jwt.ErrSignatureInvalid {
+				return &rolf.Error{Code: rolf.EUNAUTHORIZED, Message: "You have to login first", Op: rolf.Trace(), Err: err}
+			}
+			return &rolf.Error{Code: string(http.StatusBadRequest), Message: "You have to login first", Op: rolf.Trace(), Err: err}
+		}
+		if !tkn.Valid {
+
+			return &rolf.Error{Code: rolf.EUNAUTHORIZED, Message: "You have to login first", Op: rolf.Trace(), Err: err}
 		}
 
 		err = next(w, r)
@@ -43,7 +61,7 @@ func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 			switch v := err.(type) {
 			case *rolf.Error:
 				// TODO: Make user part of the error instead
-				v.Op = fmt.Sprintf("%s User: %s", v.Op, email)
+				v.Op = fmt.Sprintf("%s User: %s", v.Op, claims.email)
 			}
 			return err
 		}

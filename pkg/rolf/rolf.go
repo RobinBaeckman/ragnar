@@ -89,4 +89,5 @@ var Env = map[string]string{
 	"REDIS_HOST":  "",
 	"REDIS_PORT":  "",
 	"COOKIE_NAME": "",
+	"JWT_KEY":     "",
 }
