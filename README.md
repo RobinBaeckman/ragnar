@@ -20,12 +20,12 @@ go mod vendor
 ```
 export HOST="localhost" &&\
 export PORT="3000" &&\
-export LOG_PREFIX="ragnar-api" &&\
+export LOG_PREFIX="rolf-api" &&\
 export MYSQL_HOST="127.0.0.1" &&\
 export MYSQL_PORT="3306" &&\
-export MYSQL_USER="ruser" &&\
+export MYSQL_USER="rolf" &&\
 export MYSQL_PASS="secret" &&\
-export MYSQL_DB="ragnar_db" &&\
+export MYSQL_DB="rolf_db" &&\
 export REDIS_HOST="127.0.0.1" &&\
 export REDIS_PORT="6379" &&\
 export COOKIE_NAME="cookie"
@@ -54,7 +54,7 @@ go run main.go
 Create new user
 ```
 // TODO: use something else than python for showing json because the status code is not shown
-curl -v -d @scripts/curl_tests/create_user.json -X POST http://localhost:3000/v1/users | python -m json.tool
+curl -v -d @scripts/tests/curl/create_user.json -X POST http://localhost:3000/v1/users | python -m json.tool
 ```
 
 Login
@@ -98,7 +98,7 @@ k6 run perfect-field.js
 
 Run benchmark without testing. CreateUser example.
 ```
-go test -bench=BenchmarkCreateUser -run=XXX -cpuprofile=cpu.out
+go test -bench=BenchmarkCreateUser -run=XXX -cpuprofile=cpu.out -benchtime=100x
 go tool pprof rest.test cpu.out
 top50
 ```

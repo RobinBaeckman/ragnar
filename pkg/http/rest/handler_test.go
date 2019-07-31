@@ -3,7 +3,6 @@ package rest_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	uuid "github.com/google/uuid"
 	"github.com/gorilla/mux"
 
 	"github.com/RobinBaeckman/rolf/pkg/http/rest"
@@ -492,8 +490,14 @@ func TestLogin(t *testing.T) {
 }
 
 func BenchmarkCreateUser(b *testing.B) {
-	reqB := &rolf.User{}
-	generateUserData(reqB)
+	reqB := struct {
+		Email     string `json="email,omitempty"`
+		Password  string `json="password,omitempty"`
+		FirstName string `json="firstName,omitempty"`
+		LastName  string `json="lastName,omitempty"`
+	}{
+		Email: "benchCreateUser@mail.com", Password: "secret", FirstName: "Rolf", LastName: "Baeckman",
+	}
 
 	bt, err := json.Marshal(reqB)
 	if err != nil {
@@ -501,53 +505,65 @@ func BenchmarkCreateUser(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	// TODO: change from static to env hostname
-	r, err := http.NewRequest("POST", "localhost:3000/v1/users", bytes.NewBuffer(bt))
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	h := s.LogAndError(s.CreateUser())
-
+	b.StopTimer()
 	for i := 0; i < b.N; i++ {
+		// TODO: change from static to env hostname
+		r, err := http.NewRequest("POST", "localhost:3000/v1/users", bytes.NewBuffer(bt))
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.StartTimer()
+		h := s.LogAndError(s.CreateUser())
 		w := httptest.NewRecorder()
 		err = h(w, r)
+		b.StopTimer()
+		if err != nil {
+			b.Log("####1#################")
+			b.Fatal(err)
+		}
+
+		u := &rolf.User{}
+
+		d := json.NewDecoder(w.Body)
+		err = d.Decode(u)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.Log("######################", u)
+		s.Storage.DB.Delete(u)
 	}
+}
+
+func BenchmarkReadUser(b *testing.B) {
+	id := "1234545a-b18e-4f29-9139-57fab62aedb1"
+	ph := []byte("$2a$10$flStfMMZw4TsuJh3OdJhYeDBCibDlTNNm.yVMya4RgMcc7bF0/2nq")
+	u := &rolf.User{ID: id, Email: "benchReadUser@mail.com", Password: "secret", PasswordHash: ph, FirstName: "Rolf", LastName: "Baeckman", Role: "user"}
+	err := s.Storage.DB.Create(u)
 	if err != nil {
 		b.Fatal(err)
 	}
-}
 
-func generateUserData(u *rolf.User) {
-	u.ID = uuid.New().String()
-	u.Email = fmt.Sprintf("%s@mail.com", randSeq(12))
-	u.Password = "secret"
-	u.PasswordHash = []byte("$2a$10$flStfMMZw4TsuJh3OdJhYeDBCibDlTNNm.yVMya4RgMcc7bF0/2nq")
-	u.FirstName = "Rolf"
-	u.LastName = "Baeckman"
-	u.Role = "user"
-}
-
-func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
-
-// i is the number of random users that is being created
-func createRandomUsers(i int) (*[]rolf.User, error) {
-	us := []rolf.User{}
-	for y := 0; y < i; y++ {
-		u := &rolf.User{}
-		generateUserData(u)
-		err := s.Storage.DB.Create(u)
+	b.ResetTimer()
+	b.StopTimer()
+	for i := 0; i < b.N; i++ {
+		// TODO: change from static to env hostname
+		r, err := http.NewRequest("GET", "localhost:3000/v1/users", nil)
 		if err != nil {
-			return &us, err
+			b.Fatal(err)
 		}
-		us = append(us, *u)
-	}
 
-	return &us, nil
+		r = mux.SetURLVars(r, map[string]string{
+			"id": id,
+		})
+		b.StartTimer()
+		h := s.LogAndError(s.ReadUser())
+		w := httptest.NewRecorder()
+		err = h(w, r)
+		b.StopTimer()
+		if err != nil {
+			b.Fatal(err)
+		}
+		s.Storage.DB.Delete(u)
+	}
 }

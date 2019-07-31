@@ -1,5 +1,5 @@
-UPDATE mysql.user SET Host='%' WHERE Host='localhost' AND User='ruser';
-GRANT ALL PRIVILEGES ON *.* TO 'ruser'@'%';
+UPDATE mysql.user SET Host='%' WHERE Host='localhost' AND User='rolf';
+GRANT ALL PRIVILEGES ON *.* TO 'rolf'@'%';
 FLUSH PRIVILEGES;
 CREATE DATABASE IF NOT EXISTS rolf_db;
 CREATE DATABASE IF NOT EXISTS rolf_db_test;

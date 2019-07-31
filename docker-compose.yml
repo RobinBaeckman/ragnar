@@ -9,7 +9,7 @@ services:
    environment:
       MYSQL_DATABASE: rolf_db 
       MYSQL_ROOT_PASSWORD: secret
-      MYSQL_USER: ruser 
+      MYSQL_USER: rolf
       MYSQL_PASSWORD: secret
    ports:
      - 3306:3306
