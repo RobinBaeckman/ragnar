@@ -11,7 +11,7 @@ func Trace() string {
 	runtime.Callers(2, pc)
 	f := runtime.FuncForPC(pc[0])
 	file, line := f.FileLine(pc[0])
-	return fmt.Sprintf("%s:%d:%s", file, line, f.Name())
+	return fmt.Sprintf("%s:%d:%s\t", file, line, f.Name())
 }
 
 type User struct {
@@ -27,34 +27,20 @@ type User struct {
 
 type Error struct {
 	// Machine-readable error code.
-	Code string
+	Code int
 
 	// Human-readable message.
-	Message string
+	Msg string
 
-	// The operation being performed, usually the method
-	// being invoked (Get, Put, etc.)..
+	// Sensitive error related data for the operator.
 	Op string
-
-	// Logical operation and nested error.
-	Err error
 }
 
 // Error returns the string representation of the error message.
 // TODO: create a formated error message
 func (e *Error) Error() string {
-	return fmt.Sprintf("Code: %s, Message: %s, Op: %s, Err: %s", e.Code, e.Message, e.Op, e.Err)
+	return fmt.Sprintf("Code: %s, Message: %s, Op: %s", e.Code, e.Msg, e.Op)
 }
-
-// Application error codes.
-const (
-	ECONFLICT     = "conflict"    // action cannot be performed
-	EINTERNAL     = "internal"    // internal error
-	EINVALID      = "invalid"     // validation failed
-	EFORBIDDEN    = "not_allowed" // authentication failed
-	EUNAUTHORIZED = "not_authorized"
-	ENOTFOUND     = "not_found" // entity does not exist
-)
 
 // Application user messages
 const (
@@ -64,6 +50,7 @@ const (
 type DB interface {
 	Create(*User) error
 	Read(*User) error
+	ReadAny(*User) error
 	ReadByEmail(*User) error
 	ReadAll(*[]User) error
 	Update(*User) error

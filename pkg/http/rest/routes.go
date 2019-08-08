@@ -17,29 +17,31 @@ type Server struct {
 }
 
 func (s *Server) Routes() {
-	// Create
+	// User
 	s.Router.Handle("/v1/users",
 		s.LogAndError(s.CreateUser())).Methods("POST")
 
-	// Read
 	s.Router.Handle("/v1/users/{id}",
 		s.LogAndError(s.Auth(s.ReadUser()))).Methods("GET")
 
-	// ReadAll
-	s.Router.Handle("/v1/users",
-		s.LogAndError(s.Auth(s.ReadAllUsers()))).Methods("GET")
-
-	// Update
 	s.Router.Handle("/v1/users/{id}",
 		s.LogAndError(s.Auth(s.UpdateUser()))).Methods("PUT")
 
-	// Delete
 	s.Router.Handle("/v1/users/{id}",
 		s.LogAndError(s.Auth(s.DeleteUser()))).Methods("DELETE")
 
-	// Auth
+	// Admin
+	s.Router.Handle("/v1/admin/users",
+		s.LogAndError(s.Auth(s.IsAdmin(s.ReadAllUsers())))).Methods("GET")
+	s.Router.Handle("/v1/admin/users/{id}",
+		s.LogAndError(s.Auth(s.IsAdmin(s.ReadAnyUser())))).Methods("GET")
+
+	// Login
 	s.Router.Handle("/v1/login",
 		s.LogAndError(s.Login())).Methods("POST")
+
+	s.Router.Handle("/v1/refresh",
+		s.LogAndError(s.Refresh())).Methods("POST")
 
 	s.Router.Handle("/v1/logout",
 		s.LogAndError(s.Auth(s.Logout()))).Methods("GET")

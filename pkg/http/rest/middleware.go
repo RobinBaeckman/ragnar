@@ -1,9 +1,9 @@
 package rest
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-	"runtime/debug"
 	"time"
 
 	"github.com/RobinBaeckman/rolf/pkg/rolf"
@@ -11,7 +11,7 @@ import (
 )
 
 type claims struct {
-	email string `json:"email"`
+	Role string `json:"role"`
 	jwt.StandardClaims
 }
 
@@ -36,36 +36,51 @@ func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		c, err := r.Cookie(rolf.Env["COOKIE_NAME"])
 		if err != nil {
-			return &rolf.Error{Code: rolf.EFORBIDDEN, Message: "You have to login first", Op: rolf.Trace(), Err: err}
+			if err == http.ErrNoCookie {
+				return &rolf.Error{Code: http.StatusForbidden, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
+			}
+
+			return &rolf.Error{Code: http.StatusForbidden, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
 		}
+
 		tknStr := c.Value
 
 		// Initialize a new instance of `Claims`
-		claims := &claims{}
-		tkn, err := jwt.ParseWithClaims(tknStr, claims, func(token *jwt.Token) (interface{}, error) {
+		cl := &claims{}
+		tkn, err := jwt.ParseWithClaims(tknStr, cl, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
+		if !tkn.Valid {
+			return &rolf.Error{Code: http.StatusUnauthorized, Msg: "you are not authorized", Op: rolf.Trace() + err.Error()}
+		}
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
-				return &rolf.Error{Code: rolf.EUNAUTHORIZED, Message: "You have to login first", Op: rolf.Trace(), Err: err}
+				return &rolf.Error{Code: http.StatusUnauthorized, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
 			}
-			return &rolf.Error{Code: string(http.StatusBadRequest), Message: "You have to login first", Op: rolf.Trace(), Err: err}
-		}
-		if !tkn.Valid {
-
-			return &rolf.Error{Code: rolf.EUNAUTHORIZED, Message: "You have to login first", Op: rolf.Trace(), Err: err}
+			return &rolf.Error{Code: http.StatusBadRequest, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
 		}
 
-		err = next(w, r)
+		ctx := context.WithValue(r.Context(), "myID", cl.Subject)
+		ctx = context.WithValue(ctx, "role", cl.Role)
+		err = next(w, r.WithContext(ctx))
 		if err != nil {
 			switch v := err.(type) {
 			case *rolf.Error:
 				// TODO: Make user part of the error instead
-				v.Op = fmt.Sprintf("%s User: %s", v.Op, claims.email)
+				v.Op = fmt.Sprintf("%s User: %s", v.Op, cl.Subject)
 			}
 			return err
 		}
 
+		return nil
+	}
+}
+
+func (s *Server) IsAdmin(next HandlerFuncWithError) HandlerFuncWithError {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		if role := r.Context().Value("role"); role != "admin" {
+			return &rolf.Error{Code: http.StatusUnauthorized, Msg: "you are not authorized because you are not admin", Op: rolf.Trace()}
+		}
 		return nil
 	}
 }
@@ -75,30 +90,8 @@ func (s *Server) LogAndError(next HandlerFuncWithError) HandlerFuncWithError {
 		logOutput := fmt.Sprintf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
 		s.Logger.Printf(logOutput)
 		if err := next(w, r); err != nil {
-			switch v := err.(type) {
-			case *rolf.Error:
-				if v.Code == rolf.EUNAUTHORIZED {
-					http.Error(w, v.Message, 401)
-				} else if v.Code == rolf.ENOTFOUND {
-					http.Error(w, v.Message, 404)
-				} else if v.Code == rolf.EFORBIDDEN {
-					http.Error(w, v.Message, 403)
-				} else if v.Code == rolf.ECONFLICT {
-					http.Error(w, v.Message, 409)
-				} else if v.Code == rolf.EINVALID {
-					http.Error(w, v.Message, 422)
-				} else if v.Code == rolf.EINTERNAL {
-					http.Error(w, rolf.EINTERNAL_MSG, 500)
-				} else {
-					http.Error(w, v.Error(), 500)
-					logOutput = fmt.Sprintf("Status: %v, Error: %v", 500, v.Error())
-					s.Logger.Printf(logOutput)
-					debug.PrintStack()
-					http.Error(w, v.Message, 500)
-				}
-				s.Logger.Println(err)
-			}
-			return err
+			v := err.(*rolf.Error)
+			http.Error(w, v.Msg, v.Code)
 		}
 
 		return err

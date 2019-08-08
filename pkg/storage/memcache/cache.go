@@ -6,20 +6,20 @@ import (
 	"github.com/RobinBaeckman/rolf/pkg/rolf"
 )
 
-func (s *Storage) memGet(key string) *rolf.User {
+func (s *Storage) get(key string) *rolf.User {
 	s.mux.Lock()
 	// Lock so only one goroutine at a time can access the map c.v.
 	defer s.mux.Unlock()
 	return s.Memcache[key]
 }
 
-func (s *Storage) memSet(u *rolf.User) {
+func (s *Storage) set(u *rolf.User) {
 	s.mux.Lock()
 	s.Memcache[u.ID] = u
 	s.mux.Unlock()
 }
 
-func (s *Storage) memDel(key string) {
+func (s *Storage) del(key string) {
 	s.mux.Lock()
 	delete(s.Memcache, key)
 	s.mux.Unlock()
@@ -50,7 +50,7 @@ func (s *Storage) Create(u *rolf.User) error {
 	if err != nil {
 		return err
 	} else if u != nil {
-		s.memSet(u)
+		s.set(u)
 	}
 
 	return err
@@ -61,7 +61,7 @@ func (s *Storage) Create(u *rolf.User) error {
 func (s *Storage) Read(u *rolf.User) error {
 	// Check the local cache first.
 
-	if uc := s.memGet(u.ID); uc != nil {
+	if uc := s.get(u.ID); uc != nil {
 		u = uc
 		return nil
 	}
@@ -71,7 +71,28 @@ func (s *Storage) Read(u *rolf.User) error {
 	if err != nil {
 		return err
 	} else if u != nil {
-		s.memSet(u)
+		s.set(u)
+	}
+
+	return err
+}
+
+// User returns a user for a given id.
+// Returns the cached instance if available.
+func (s *Storage) ReadAny(u *rolf.User) error {
+	// Check the local cache first.
+
+	if uc := s.get(u.ID); uc != nil {
+		u = uc
+		return nil
+	}
+
+	// Otherwise fetch from the underlying service.
+	err := s.DB.ReadAny(u)
+	if err != nil {
+		return err
+	} else if u != nil {
+		s.set(u)
 	}
 
 	return err
@@ -81,7 +102,7 @@ func (s *Storage) Read(u *rolf.User) error {
 // Returns the cached instance if available.
 func (s *Storage) ReadByEmail(u *rolf.User) error {
 	// Check the local cache first.
-	if uc := s.memGet(u.ID); uc != nil {
+	if uc := s.get(u.ID); uc != nil {
 		u = uc
 		return nil
 	}
@@ -92,7 +113,7 @@ func (s *Storage) ReadByEmail(u *rolf.User) error {
 	if err != nil {
 		return err
 	} else if u != nil {
-		s.memSet(u)
+		s.set(u)
 	}
 
 	return err
@@ -105,7 +126,7 @@ func (s *Storage) Update(u *rolf.User) error {
 	if err != nil {
 		return err
 	} else if u != nil {
-		s.memSet(u)
+		s.set(u)
 	}
 
 	return err
@@ -116,7 +137,7 @@ func (s *Storage) Delete(u *rolf.User) error {
 	if err != nil {
 		return err
 	} else if u != nil {
-		s.memDel(u.ID)
+		s.del(u.ID)
 	}
 
 	return err

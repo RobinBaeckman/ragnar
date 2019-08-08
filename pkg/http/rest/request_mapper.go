@@ -13,7 +13,7 @@ func decode(r *http.Request, u *rolf.User) error {
 
 	err := decoder.Decode(u)
 	if err != nil {
-		return &rolf.Error{Code: rolf.EINVALID, Message: "Missing parameters", Op: rolf.Trace(), Err: err}
+		return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Missing parameters", Op: rolf.Trace() + err.Error()}
 	}
 
 	return nil
