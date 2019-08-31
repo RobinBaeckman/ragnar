@@ -22,6 +22,7 @@ type User struct {
 	FirstName    string `json:"firstName"`
 	LastName     string `json:"lastName"`
 	Role         string `json:"role"`
+	Token        string `json:"token"`
 	CreatedAt    string `json:"-"`
 }
 
@@ -55,14 +56,20 @@ type DB interface {
 	ReadAll(*[]User) error
 	Update(*User) error
 	Delete(*User) error
+	UpdatePassword(*User) error
+	StoreToken(*User) error
 	CleanupTables() error
 	Close()
 }
 
 type MemDB interface {
-	Set(string, interface{}, time.Duration) error
+	SetUser(string, *User, time.Duration) error
 	Del(string) error
-	Get(string) (string, error)
+	GetUser(string) (*User, error)
+}
+
+type Mailer interface {
+	Send(to string, from string, msg string) error
 }
 
 var Env = map[string]string{
@@ -77,4 +84,8 @@ var Env = map[string]string{
 	"REDIS_PORT":  "",
 	"COOKIE_NAME": "",
 	"JWT_KEY":     "",
+	"PROTO":       "",
+	"SMTP_HOST":   "",
+	"SMTP_PORT":   "",
+	"EMAIL":       "",
 }

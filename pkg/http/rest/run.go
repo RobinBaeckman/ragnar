@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/RobinBaeckman/rolf/pkg/mail/smtp"
 	"github.com/RobinBaeckman/rolf/pkg/rolf"
 	"github.com/RobinBaeckman/rolf/pkg/storage/memcache"
 	"github.com/RobinBaeckman/rolf/pkg/storage/mysql"
@@ -12,23 +13,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func NewServer() (*Server, error) {
-	l := log.New(logWriter{}, "", 3)
-	l.SetFlags(0)
-	mdb := redis.NewMemDB()
-	db, err := mysql.NewDB()
-	if err != nil {
-		return nil, err
-	}
-
-	r := mux.NewRouter()
-
+func NewServer(l *log.Logger, mdb rolf.MemDB, db rolf.DB, m rolf.Mailer, r *mux.Router) (*Server, error) {
 	c := memcache.NewStorage(db, mdb)
 
 	return &Server{
 		Router:  r,
 		Storage: c,
 		Logger:  l,
+		Mailer:  m,
 	}, nil
 }
 
@@ -37,8 +29,23 @@ func Run() error {
 		return err
 	}
 
-	s, err := NewServer()
-	defer s.Storage.DB.Close()
+	l := log.New(logWriter{}, "", 3)
+	l.SetFlags(0)
+	mdb := redis.NewMemDB()
+	db, err := mysql.NewDB()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	m, err := smtp.NewMailer()
+	if err != nil {
+		return err
+	}
+
+	r := mux.NewRouter()
+
+	s, err := NewServer(l, mdb, db, m, r)
 	if err != nil {
 		return err
 	}

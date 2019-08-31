@@ -1,0 +1,539 @@
+{
+	"info": {
+		"_postman_id": "f0cce288-6c6c-4add-b337-b10640766869",
+		"name": "rolf api",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "register user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "907c050c-a941-4b58-865b-cce495305702",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('id', pm.response.json().id)"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolf@mail.com\",\n\t\"password\": \"secret\",\n\t\"firstName\": \"Rolf\",\n\t\"lastName\": \"Baeckman\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "register admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "907c050c-a941-4b58-865b-cce495305702",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('id', pm.response.json().id)"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "cookie",
+						"value": "{{cookie}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolfAdmin@mail.com\",\n\t\"password\": \"secret\",\n\t\"firstName\": \"Rolf\",\n\t\"lastName\": \"Baeckman\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/admin/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"admin",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolf@mail.com\",\n\t\"password\": \"secret\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login static admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolle@mail.com\",\n\t\"password\": \"secretNew\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "forgot password mail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"disabled": false
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolle@mail.com\",\n\t\"password\": \"secret\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/users/rolle@mail.com/forgot_password",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"users",
+						"rolle@mail.com",
+						"forgot_password"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "forgot password reset",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"password\": \"secretNew\",\n\t\"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiIiwiZXhwIjoxNTY2NjgxMTA3LCJzdWIiOiI5MDNjOGQ4NS1hODc3LTRjNDAtOGZhNS1hZWEyN2Y2NDQ5MjEifQ.3OPjPOtKjQ7KW6u_-KGo-jR442IzXl_9po6BajNBZiE\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/users/rolle@mail.com/forgot_password",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"users",
+						"rolle@mail.com",
+						"forgot_password"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login admin",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolfAdmin@mail.com\",\n\t\"password\": \"secret\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "refresh token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "cookie",
+						"value": "{{cookie}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolfAdmin@mail.com\",\n\t\"password\": \"secret\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/refresh",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"refresh"
+					]
+				},
+				"description": "Can only be used the last 30 seconds before the token expires, in other case it will return 400"
+			},
+			"response": []
+		},
+		{
+			"name": "read user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "cookie",
+						"value": "{{cookie}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/users/{{id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"users",
+						"{{id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "read users",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "cookie",
+						"value": "{{cookie}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/admin/users",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"admin",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "update user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "cookie",
+						"value": "{{cookie}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \n\t\"email\":\"rolf@mail.com\",\n\t\"password\":\"secret\", \n\t\"lastName\":\"baeckmanUpdated\", \n\t\"firstName\":\"rolfUpdated\" \n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/users/{{id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"users",
+						"{{id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "delete user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "767a088e-c4c0-4499-937d-bc11833bfdea",
+						"type": "text/javascript",
+						"exec": [
+							"pm.globals.set('cookie', pm.cookies.get('cookie'))"
+						]
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "cookie",
+						"value": "{{cookie}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"email\": \"rolf@mail.com\",\n\t\"password\": \"secret\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/v1/users/{{id}}",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"v1",
+						"users",
+						"{{id}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

@@ -14,20 +14,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
+func (s *Server) RegisterUser() func(http.ResponseWriter, *http.Request) error {
 	// TODO: thing := prepareThing()
 	type request struct {
-		Email     string `json="email"`
-		Password  string `json="password"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
 	}
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
@@ -96,16 +96,98 @@ func (s *Server) CreateUser() func(http.ResponseWriter, *http.Request) error {
 	}
 }
 
-func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
+func (s *Server) RegisterAdmin() func(http.ResponseWriter, *http.Request) error {
+	// TODO: thing := prepareThing()
 	type request struct {
-		ID string `json="id"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
 	}
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) (err error) {
+		// use thing
+		decoder := json.NewDecoder(r.Body)
+		defer r.Body.Close()
+
+		req := &request{}
+		err = decoder.Decode(req)
+		if err != nil {
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Missing parameters", Op: rolf.Trace() + err.Error()}
+		}
+
+		switch {
+		case !valid.Email(req.Email):
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid email: " + req.Email, Op: rolf.Trace()}
+		case !valid.Password(req.Password):
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid password: " + req.Password, Op: rolf.Trace()}
+		case !valid.FirstName(req.FirstName):
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid firstName: " + req.FirstName, Op: rolf.Trace()}
+		case !valid.LastName(req.LastName):
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid lastName: " + req.LastName, Op: rolf.Trace()}
+		}
+
+		u := &rolf.User{
+			ID:        uuid.New().String(),
+			Email:     req.Email,
+			Password:  req.Password,
+			FirstName: req.FirstName,
+			LastName:  req.LastName,
+			// TODO: build better Role implementation
+			Role: "admin",
+		}
+
+		// TODO: make the hash in the database instead
+		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
+		}
+
+		err = s.Storage.Create(u)
+		if err != nil {
+			return err
+		}
+
+		res := response{
+			ID:        u.ID,
+			Email:     u.Email,
+			FirstName: u.FirstName,
+			LastName:  u.LastName,
+			Role:      u.Role,
+		}
+
+		b, err := json.Marshal(res)
+		if err != nil {
+			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
+		}
+
+		url := fmt.Sprintf("%s://%s:%s/v1/users/%s", rolf.Env["PROTO"], rolf.Env["HOST"], rolf.Env["PORT"], u.ID)
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Location", url)
+		w.WriteHeader(http.StatusCreated)
+		w.Write(b)
+
+		return nil
+	}
+}
+
+func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
+	type request struct {
+		ID string `json:"id"`
+	}
+	type response struct {
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		req := request{ID: mux.Vars(r)["id"]}
@@ -146,14 +228,14 @@ func (s *Server) ReadUser() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) ReadAnyUser() func(http.ResponseWriter, *http.Request) error {
 	type request struct {
-		ID string `json="id"`
+		ID string `json:"id"`
 	}
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		req := request{ID: mux.Vars(r)["id"]}
@@ -191,11 +273,11 @@ func (s *Server) ReadAnyUser() func(http.ResponseWriter, *http.Request) error {
 // TODO: make sure the password is returned too
 func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		us := &[]rolf.User{}
@@ -232,18 +314,18 @@ func (s *Server) ReadAllUsers() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 	type request struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		Password  string `json="password"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
 	}
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		decoder := json.NewDecoder(r.Body)
@@ -313,14 +395,14 @@ func (s *Server) UpdateUser() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 	type request struct {
-		ID string `json="id"`
+		ID string `json:"id"`
 	}
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 
@@ -336,21 +418,8 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 			return err
 		}
 
-		res := response{
-			ID:        u.ID,
-			Email:     u.Email,
-			FirstName: u.FirstName,
-			LastName:  u.LastName,
-			Role:      u.Role,
-		}
-
-		b, err := json.Marshal(res)
-		if err != nil {
-			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
-		}
-
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+		w.WriteHeader(http.StatusNoContent)
 
 		return nil
 	}
@@ -358,15 +427,15 @@ func (s *Server) DeleteUser() func(http.ResponseWriter, *http.Request) error {
 
 func (s *Server) Login() func(http.ResponseWriter, *http.Request) error {
 	type request struct {
-		Email    string `json="email"`
-		Password string `json="password"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	type response struct {
-		ID        string `json="id"`
-		Email     string `json="email"`
-		FirstName string `json="firstName"`
-		LastName  string `json="lastName"`
-		Role      string `json="role"`
+		ID        string `json:"id"`
+		Email     string `json:"email"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Role      string `json:"role"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
 		req := &request{}
@@ -457,7 +526,7 @@ func (s *Server) Refresh() func(http.ResponseWriter, *http.Request) error {
 			return jwtKey, nil
 		})
 		if !tkn.Valid {
-			return &rolf.Error{Code: http.StatusUnauthorized, Msg: "you are not authorized", Op: rolf.Trace() + err.Error()}
+			return &rolf.Error{Code: http.StatusUnauthorized, Msg: "you are not authorized", Op: rolf.Trace()}
 		}
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
@@ -467,19 +536,16 @@ func (s *Server) Refresh() func(http.ResponseWriter, *http.Request) error {
 		}
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
-				w.WriteHeader(http.StatusUnauthorized)
-				return
+				return &rolf.Error{Code: http.StatusUnauthorized, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
 			}
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			return &rolf.Error{Code: http.StatusBadRequest, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
 		}
 
 		// We ensure that a new token is not issued until enough time has elapsed
 		// In this case, a new token will only be issued if the old token is within
 		// 30 seconds of expiry. Otherwise, return a bad request status
 		if time.Unix(claims.ExpiresAt, 0).Sub(time.Now()) > 30*time.Second {
-			w.WriteHeader(http.StatusBadRequest)
-			return
+			return &rolf.Error{Code: http.StatusBadRequest, Msg: "something", Op: rolf.Trace()}
 		}
 
 		// Now, create a new token for the current use, with a renewed expiration time
@@ -488,13 +554,12 @@ func (s *Server) Refresh() func(http.ResponseWriter, *http.Request) error {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 		tokenString, err := token.SignedString(jwtKey)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
 		}
 
 		// Set the new token as the users `token` cookie
 		http.SetCookie(w, &http.Cookie{
-			Name:    "token",
+			Name:    rolf.Env["COOKIE_NAME"],
 			Value:   tokenString,
 			Expires: et,
 		})
@@ -503,22 +568,110 @@ func (s *Server) Refresh() func(http.ResponseWriter, *http.Request) error {
 	}
 }
 
-func (s *Server) Logout() func(http.ResponseWriter, *http.Request) error {
+func (s *Server) ForgotPasswordMail() func(http.ResponseWriter, *http.Request) error {
+	type request struct {
+		Email string `json:"email"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) (err error) {
-		c := &http.Cookie{
-			Name:    rolf.Env["COOKIE_NAME"],
-			Value:   "",
-			Path:    "/",
-			Expires: time.Unix(0, 0),
+		req := request{Email: mux.Vars(r)["email"]}
 
-			HttpOnly: true,
+		if err != nil {
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Missing parameters", Op: rolf.Trace() + err.Error()}
 		}
-		v := c.Value
 
-		s.Storage.MemDB.Del(v)
+		if !valid.Email(req.Email) {
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid email: " + req.Email, Op: rolf.Trace()}
+		}
 
+		u := &rolf.User{Email: req.Email}
+
+		if err = s.Storage.DB.ReadByEmail(u); err != nil {
+			return err
+		}
+
+		et := time.Now().Add(60 * time.Minute)
+		claims := &claims{
+			StandardClaims: jwt.StandardClaims{
+				Subject:   u.ID,
+				ExpiresAt: et.Unix(),
+			},
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		tokenString, err := token.SignedString(jwtKey)
+		if err != nil {
+			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
+		}
+
+		u.Token = tokenString
+		if err = s.Storage.DB.StoreToken(u); err != nil {
+			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
+		}
+
+		s.Mailer.Send(u.Email, rolf.Env["EMAIL"], tokenString)
+
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		http.SetCookie(w, c)
+
+		return nil
+	}
+}
+
+func (s *Server) PasswordReset() func(http.ResponseWriter, *http.Request) error {
+	type request struct {
+		Password string `json:"password"`
+		Token    string `json:"token"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) (err error) {
+		email := mux.Vars(r)["email"]
+		req := &request{}
+		decoder := json.NewDecoder(r.Body)
+		defer r.Body.Close()
+
+		err = decoder.Decode(req)
+		if err != nil {
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Missing parameters", Op: rolf.Trace() + err.Error()}
+		}
+
+		switch {
+		case !valid.Email(email):
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid email: " + email, Op: rolf.Trace()}
+		case !valid.Password(req.Password):
+			return &rolf.Error{Code: http.StatusUnprocessableEntity, Msg: "Invalid password: " + req.Password, Op: rolf.Trace()}
+		}
+
+		tknStr := req.Token
+
+		// Initialize a new instance of `Claims`
+		cl := &claims{}
+		tkn, err := jwt.ParseWithClaims(tknStr, cl, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if !tkn.Valid {
+			return &rolf.Error{Code: http.StatusUnauthorized, Msg: "you are not authorized", Op: rolf.Trace() + err.Error()}
+		}
+		if err != nil {
+			if err == jwt.ErrSignatureInvalid {
+				return &rolf.Error{Code: http.StatusUnauthorized, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
+			}
+			return &rolf.Error{Code: http.StatusBadRequest, Msg: "You have to login first", Op: rolf.Trace() + err.Error()}
+		}
+
+		u := &rolf.User{Email: email}
+		// TODO: make the hash in the database instead
+		s.Storage.DB.ReadByEmail(u)
+
+		if u.Token != tknStr {
+			return &rolf.Error{Code: http.StatusBadRequest, Msg: "You have to login first", Op: rolf.Trace()}
+		}
+
+		u.PasswordHash, err = bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return &rolf.Error{Code: http.StatusInternalServerError, Op: rolf.Trace() + err.Error()}
+		}
+
+		s.Storage.DB.UpdatePassword(u)
 
 		return nil
 	}

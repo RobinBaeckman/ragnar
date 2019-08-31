@@ -66,7 +66,7 @@ func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 		if err != nil {
 			switch v := err.(type) {
 			case *rolf.Error:
-				// TODO: Make user part of the error instead
+				// TODO: Move to LogAndError
 				v.Op = fmt.Sprintf("%s User: %s", v.Op, cl.Subject)
 			}
 			return err
@@ -76,11 +76,17 @@ func (s *Server) Auth(next HandlerFuncWithError) HandlerFuncWithError {
 	}
 }
 
-func (s *Server) IsAdmin(next HandlerFuncWithError) HandlerFuncWithError {
+func (s *Server) OnlyAdmin(next HandlerFuncWithError) HandlerFuncWithError {
 	return func(w http.ResponseWriter, r *http.Request) error {
 		if role := r.Context().Value("role"); role != "admin" {
 			return &rolf.Error{Code: http.StatusUnauthorized, Msg: "you are not authorized because you are not admin", Op: rolf.Trace()}
 		}
+
+		err := next(w, r)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 }
@@ -90,8 +96,14 @@ func (s *Server) LogAndError(next HandlerFuncWithError) HandlerFuncWithError {
 		logOutput := fmt.Sprintf("%s %s %s", r.RemoteAddr, r.Method, r.URL)
 		s.Logger.Printf(logOutput)
 		if err := next(w, r); err != nil {
-			v := err.(*rolf.Error)
-			http.Error(w, v.Msg, v.Code)
+			switch err := err.(type) {
+			case *rolf.Error:
+				http.Error(w, err.Msg, err.Code)
+				s.Logger.Printf("Msg: %v, Code: %v, Op: %v", err.Msg, err.Code, err.Op)
+			default:
+				http.Error(w, "Ooops something went wrong", 500)
+				s.Logger.Printf("%v", err)
+			}
 		}
 
 		return err

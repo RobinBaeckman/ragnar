@@ -14,13 +14,11 @@ type Server struct {
 	Storage *memcache.Storage
 	Router  *mux.Router
 	Logger  *log.Logger
+	Mailer  rolf.Mailer
 }
 
 func (s *Server) Routes() {
 	// User
-	s.Router.Handle("/v1/users",
-		s.LogAndError(s.CreateUser())).Methods("POST")
-
 	s.Router.Handle("/v1/users/{id}",
 		s.LogAndError(s.Auth(s.ReadUser()))).Methods("GET")
 
@@ -31,20 +29,28 @@ func (s *Server) Routes() {
 		s.LogAndError(s.Auth(s.DeleteUser()))).Methods("DELETE")
 
 	// Admin
+	s.Router.Handle("/v1/admin/register",
+		s.LogAndError(s.Auth(s.OnlyAdmin(s.RegisterAdmin())))).Methods("POST")
 	s.Router.Handle("/v1/admin/users",
-		s.LogAndError(s.Auth(s.IsAdmin(s.ReadAllUsers())))).Methods("GET")
+		s.LogAndError(s.Auth(s.OnlyAdmin(s.ReadAllUsers())))).Methods("GET")
 	s.Router.Handle("/v1/admin/users/{id}",
-		s.LogAndError(s.Auth(s.IsAdmin(s.ReadAnyUser())))).Methods("GET")
+		s.LogAndError(s.Auth(s.OnlyAdmin(s.ReadAnyUser())))).Methods("GET")
 
 	// Login
+	s.Router.Handle("/v1/register",
+		s.LogAndError(s.RegisterUser())).Methods("POST")
+
+	s.Router.Handle("/v1/users/{email}/forgot_password",
+		s.LogAndError(s.ForgotPasswordMail())).Methods("GET")
+
+	s.Router.Handle("/v1/users/{email}/forgot_password",
+		s.LogAndError(s.PasswordReset())).Methods("POST")
+
 	s.Router.Handle("/v1/login",
 		s.LogAndError(s.Login())).Methods("POST")
 
 	s.Router.Handle("/v1/refresh",
 		s.LogAndError(s.Refresh())).Methods("POST")
-
-	s.Router.Handle("/v1/logout",
-		s.LogAndError(s.Auth(s.Logout()))).Methods("GET")
 
 	http.Handle("/", s.Router)
 

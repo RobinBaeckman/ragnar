@@ -29,7 +29,11 @@ export MYSQL_DB="rolf_db" &&\
 export REDIS_HOST="127.0.0.1" &&\
 export REDIS_PORT="6379" &&\
 export COOKIE_NAME="cookie" &&\
-export JWT_KEY="secret"
+export JWT_KEY="secret" &&\
+export PROTO="http" &&\
+export SMTP_HOST="0.0.0.0" &&\
+export SMTP_PORT="1025" &&\
+export EMAIL="server@mail.com"
 ```
 
 4. if you're using docker setup docker mysql
@@ -52,15 +56,26 @@ go run main.go
 
 ## Usage:
 
-Create new user
+Register new user
 ```
 // TODO: use something else than python for showing json because the status code is not shown
-curl -v -d @scripts/tests/curl/create_user.json -X POST http://localhost:3000/v1/users | python -m json.tool
+curl -v -d @scripts/tests/curl/create_user.json -X POST http://localhost:3000/v1/register | python -m json.tool
+```
+
+Register new admin 
+```
+// TODO: use something else than python for showing json because the status code is not shown
+curl -v -i -L -b /tmp/cookie-jar.txt  -d @scripts/tests/curl/create_admin.json -X POST http://localhost:3000/v1/register/admin | python -m json.tool
 ```
 
 Login
 ```
 curl -v -c /tmp/cookie-jar.txt -d @scripts/tests/curl/login.json http://localhost:3000/v1/login
+```
+
+Login Admin
+```
+curl -v -c /tmp/cookie-jar.txt -d @scripts/tests/curl/login_admin.json http://localhost:3000/v1/login
 ```
 
 Read user

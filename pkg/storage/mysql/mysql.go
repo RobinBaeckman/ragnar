@@ -12,13 +12,13 @@ import (
 )
 
 // TODO: Implement new error handling
-func NewDB() (DB, error) {
+func NewDB() (rolf.DB, error) {
 	db, err := sql.Open("mysql", rolf.Env["MYSQL_USER"]+":"+rolf.Env["MYSQL_PASS"]+"@tcp("+rolf.Env["MYSQL_HOST"]+")/"+rolf.Env["MYSQL_DB"])
 	if err != nil {
-		return DB{}, fmt.Errorf("Can't connect to db\n %s", err)
+		return rolf.DB(DB{}), fmt.Errorf("Can't connect to db\n %s", err)
 	}
 
-	return DB{db}, nil
+	return rolf.DB(DB{db}), nil
 }
 
 type DB struct {
@@ -65,7 +65,7 @@ func (db DB) ReadAny(u *rolf.User) error {
 }
 
 func (db DB) ReadByEmail(u *rolf.User) error {
-	err := db.QueryRow("SELECT id, email, password, first_name, last_name, role FROM users WHERE email=?", u.Email).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role)
+	err := db.QueryRow("SELECT id, email, password, first_name, last_name, role, token FROM users WHERE email=?", u.Email).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FirstName, &u.LastName, &u.Role, &u.Token)
 	switch {
 	case err == sql.ErrNoRows:
 		return &rolf.Error{Code: http.StatusNotFound, Msg: "No user with that ID: " + u.ID, Op: rolf.Trace() + err.Error()}
@@ -129,6 +129,36 @@ func (db DB) Delete(u *rolf.User) error {
 
 func (db DB) Close() {
 	defer db.DB.Close()
+}
+
+func (db DB) StoreToken(u *rolf.User) error {
+	stmtIns, err := db.Prepare("UPDATE users set token=? where id=?")
+	if err != nil {
+		return &rolf.Error{Code: http.StatusConflict, Op: rolf.Trace() + err.Error()}
+	}
+	defer stmtIns.Close()
+
+	_, err = stmtIns.Exec(u.Token, u.ID)
+	if err != nil {
+		return &rolf.Error{Code: http.StatusConflict, Op: rolf.Trace() + err.Error()}
+	}
+
+	return nil
+}
+
+func (db DB) UpdatePassword(u *rolf.User) error {
+	stmtIns, err := db.Prepare("UPDATE users set password=? where id=?")
+	if err != nil {
+		return &rolf.Error{Code: http.StatusConflict, Op: rolf.Trace() + err.Error()}
+	}
+	defer stmtIns.Close()
+
+	_, err = stmtIns.Exec(u.PasswordHash, u.ID)
+	if err != nil {
+		return &rolf.Error{Code: http.StatusConflict, Op: rolf.Trace() + err.Error()}
+	}
+
+	return nil
 }
 
 func (db DB) CleanupTables() error {
